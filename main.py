@@ -630,8 +630,14 @@ def main():
                             distance = 0
                         else:
                             distance = coral_regress_distance(center_y) # get distance (inches) using y location
-                        px_per_deg = coral_regress_px_per_deg(distance) # get pixel per degree
-                        angle = (1 / px_per_deg) * (center_x - w/2)
+                        
+                        leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
+                        rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
+                        topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
+                        bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
+
+                        angle = 0
+                        
                         if (distance >= 0 and distance < 360) and (angle >= -70 and angle < 70): # sanity check'''
                     
                             image_num += 1
