@@ -90,11 +90,9 @@ TAG_RECORD_REMOVE_TOPIC_NAME = "/Vision/Tag Remove"
 CORAL_RECORD_DATA_TOPIC_NAME = "/Vision/Coral Record"
 CORAL_X_OFFSET = 0
 CORAL_Y_OFFSET = 5
+Y_CROP = 0
 FPS_NUM_SAMPLES = 100 #after this number of images the fps average is calulated
 CORAL_CROP_TOP_TOPIC_NAME = "/Vision/Coral Crop Top"
-CORAL_CROP_BOTTOM_TOPIC_NAME = "/Vision/Coral Crop Bottom"
-CORAL_CROP_TOP_DEFAULT = 0 # this is a %; default to no crop
-CORAL_CROP_BOTTOM_DEFAULT = 100 # this is a %; default to no crop
 CORAL_NUM_PIXELS_FROM_CENTER_BLANK = 15
 TAG_BRIGHTNESS_TOPIC_NAME = "/Vision/Tag Brightness"
 CORAL_BRIGHTNESS_TOPIC_NAME = "/Vision/Coral Brightness"
@@ -291,16 +289,6 @@ class FrameServer:
                     return self._array
 
 
-class PieceData:
-    def __init__(self, num, rio_time, image_time, type, distance, angle):
-        self.image_num = num
-        self.rio_time = rio_time
-        self.image_time = time_time
-        self.type = type
-        self.distance = distance
-        self.angle = angle
-
-
 def coral_regress_distance(y):
     terms = [
      5.6042530346620970e+002,
@@ -337,151 +325,11 @@ def coral_regress_px_per_deg(x):
         t *= x
     return r
 
-def pose_data_string(sequence_num, rio_time, time, tags, tag_poses, nt_objects):
-    string_header = ""
-    string_header = f'num={sequence_num} t_rio={rio_time:1.3f} t_img={time:1.3f} len={len(tags)}'
-
-    string_data_rot = f'tags={len(tags)} '
-    string_data_t = f'tags={len(tags)} '
-    tag_pose = 0
-    
-    for tag in tags:
-        
-        x_deg = math.degrees(tag_poses[tag_pose].rotation().X())
-        y_deg = math.degrees(tag_poses[tag_pose].rotation().Y())
-        z_deg = math.degrees(tag_poses[tag_pose].rotation().Z())
-        x_in = (tag_poses[tag_pose].translation().X() * 39.3701)
-        y_in = (tag_poses[tag_pose].translation().Y() * 39.3701)
-        z_in = (tag_poses[tag_pose].translation().Z() * 39.3701)
-
-        x_deg_str = f'{x_deg:3.1f}'
-        y_deg_str = f'{y_deg:3.1f}'
-        z_deg_str = f'{z_deg:3.1f}'
-
-        x_in_str = f'{x_in:3.1f}'
-        y_in_str = f'{y_in:3.1f}'
-        z_in_str = f'{z_in:3.1f}'
-
-        string_data_rot += f'id={tag.getId()} \
-        x_deg={x_deg_str} \
-        y_deg={y_deg_str} \
-        z_deg={z_deg_str} '
-
-        id = tag.getId()
-        dm = tag.getDecisionMargin()
-        errors = tag.getHamming()
-    
-        id_str = f'{id}'
-        dm_str = f'{dm:5.1f}'
-        errors_str = f'{errors}'
-
-        string_data_t += f'id={id_str} dm={dm_str} e={errors_str} \
-        x_in={x_in_str} \
-        #y_in={(tag_poses[tag_pose].translation().Y() - (0.0075 * tag_poses[tag_pose].translation().Z())  * 39.37):3.1f} \
-        y_in={y_in_str} \
-        z_in={z_in_str} '
-        tag_pose +=1
-    
-        nt_objects[0].set(id)
-        nt_objects[1].set(dm)
-        nt_objects[2].set(errors)
-        nt_objects[3].set(x_deg)
-        nt_objects[4].set(y_deg)
-        nt_objects[5].set(z_deg)
-        nt_objects[6].set(x_in)
-        nt_objects[7].set(y_in)
-        nt_objects[8].set(z_in)
-
-    return string_header, string_data_rot, string_data_t
-
 def piece_pose_data_string(sequence_num, rio_time, time, dist, angle):
     string_header = f'num={sequence_num} t_rio={rio_time:1.3f} t_img={time:1.3f} z_in={dist:3.1f} y_deg={angle:3.1f}'
     
     return string_header
 
-
-def draw_tags(img, tags, tag_poses, rVector, tVector, camMatrix, distCoeffs, crop_top):
-    tag_pose = 0
-
-    # need to add crop_top back to all the y dimensions in order to draw everything 
-    # at the right place on the full image 
-    # because the tag detect locations are for a (potentially) cropped image from the full image
-    
-    for tag in tags:
-        x0 = int(tag.getCorner(0).x)
-        y0 = int(tag.getCorner(0).y) + crop_top
-        x1 = int(tag.getCorner(1).x)
-        y1 = int(tag.getCorner(1).y) + crop_top
-        x2 = int(tag.getCorner(2).x)
-        y2 = int(tag.getCorner(2).y) + crop_top
-        x3 = int(tag.getCorner(3).x)
-        y3 = int(tag.getCorner(3).y) + crop_top
-        cv2.line(img, (x0, y0), (x1, y1), (0,255,0), 3) #starts at top left corner of apriltag
-        cv2.line(img, (x1, y1), (x2, y2), (0,255,0), 3) #top left to bottom left
-        cv2.line(img, (x2, y2), (x3, y3), (0,255,0), 3) #bottom left to bottom right
-        cv2.line(img, (x3, y3), (x0, y0), (0,255,0), 3) #bottom right to top right
-        fontFace = cv2.FONT_HERSHEY_TRIPLEX
-        fontScale = 1
-        fontColor = (0, 0, 255)
-        thickness = 2
-        IdStr = str(tag.getId())
-        textWidth, textHeight = cv2.getTextSize(IdStr, fontFace, fontScale, thickness)[0]
-        CenterCoordinates = (int(tag.getCenter().x) - int(textWidth / 2), int( tag.getCenter().y + crop_top) + int(textHeight / 2))
-        cv2.putText(img, IdStr, CenterCoordinates, fontFace, fontScale, fontColor, thickness) # ID in center
-
-        rVector[0][0] = tag_poses[tag_pose].rotation().X()
-        rVector[1][0] = tag_poses[tag_pose].rotation().Y()
-        rVector[2][0] = tag_poses[tag_pose].rotation().Z()
-        tVector[0][0] = tag_poses[tag_pose].translation().X()
-        tVector[1][0] = tag_poses[tag_pose].translation().Y() + crop_top
-        tVector[2][0] = tag_poses[tag_pose].translation().Z()
-        tag_pose += 1
-        #for rotation, ask if its shrinking on each axis 
-        cv2.drawFrameAxes(img, camMatrix, distCoeffs, rVector, tVector, .076, 1)
-    return img
-
-def file_write_tags(file, 
-               threads,
-                decimate, 
-                blur, 
-                refine, 
-                sharpen, 
-                atdebug, 
-                decisionmargin_min,
-                decisionmargin_max,
-                crop_x,
-                crop_y,
-                errors,
-                ):
-
-    parser = configparser.ConfigParser()
-
-    parser.add_section('VISION')
-    parser.set('VISION', THREADS_TOPIC_NAME, str(int(threads)))
-    parser.set('VISION', BLUR_TOPIC_NAME, str(blur))
-    parser.set('VISION', REFINE_EDGES_TOPIC_NAME, str(refine))
-    parser.set('VISION', SHARPENING_TOPIC_NAME, str(round(sharpen,2)))
-    parser.set('VISION', APRILTAG_DEBUG_MODE_TOPIC_NAME, str(atdebug))
-    parser.set('VISION', DECISION_MARGIN_MIN_TOPIC_NAME, str(round(decisionmargin_min)))
-    parser.set('VISION', DECIMATE_TOPIC_NAME, str(round(decimate,2)))
-    parser.set('VISION', TAG_CONFIG_FILE_TOPIC_NAME, str(file))
-    parser.set('VISION', DECISION_MARGIN_MAX_TOPIC_NAME, str(round(decisionmargin_max)))
-    parser.set('VISION', TAG_CROP_TOP_TOPIC_NAME, str(round(crop_x)))
-    parser.set('VISION', TAG_CROP_BOTTOM_TOPIC_NAME, str(round(crop_y)))
-    parser.set('VISION', TAG_ERRORS_TOPIC_NAME, str(errors))
-
-    with open(file, 'w') as config:
-        parser.write(config)
-        print('wrote tag file:')
-        print({'VISION': dict(parser['VISION'])})
-    
-    #print(f'file={file} mh={str(min_h)} ms={str(min_s)} mv={str(min_v)} xh={str(max_h)} xs={str(max_s)} xv={str(max_v)}')
-
-    '''        
-    with open(file, 'w') as config:
-        parser.write(config)
-        print({'VISION': dict(parser['VISION'])})
-    '''
 
 def file_write_corals(file,
                 min_h,
@@ -522,38 +370,6 @@ def camera_upside_down():
     parser.read('gen_config.ini')
     return(parser.getboolean('GENERAL', 'camera_upside_down'))
 
-def file_read_tag(parser, configfile_failure_ntt):
-    config_exists = os.path.isfile(TAG_CONFIG_FILE_DEFAULT)
-    if config_exists == True:
-        parser.read(TAG_CONFIG_FILE_DEFAULT)
-        configfile_failure_ntt.set(False) #if it works mark no error
-        print('read tag file:')
-        print({'VISION': dict(parser['VISION'])})
-
-    else: # re-create config and container file to default
-        configfile_failure_ntt.set(True) # set error for config file
-
-        parser.add_section('VISION')
-        parser.set('VISION', THREADS_TOPIC_NAME, str(THREADS_DEFAULT))
-        parser.set('VISION', BLUR_TOPIC_NAME, str(BLUR_DEFAULT))
-        parser.set('VISION', REFINE_EDGES_TOPIC_NAME, str(REFINE_EDGES_DEFAULT))
-        parser.set('VISION', SHARPENING_TOPIC_NAME, str(SHARPENING_DEFAULT))
-        parser.set('VISION', APRILTAG_DEBUG_MODE_TOPIC_NAME, str(APRILTAG_DEBUG_MODE_DEFAULT))
-        parser.set('VISION', DECISION_MARGIN_MIN_TOPIC_NAME, str(DECISION_MARGIN_DEFAULT))
-        parser.set('VISION', DECIMATE_TOPIC_NAME, str(DECIMATE_DEFAULT))
-        parser.set('VISION', TAG_CONFIG_FILE_TOPIC_NAME, str(TAG_CONFIG_FILE_DEFAULT))
-        parser.set('VISION', DECISION_MARGIN_MAX_TOPIC_NAME, str(DECISION_MARGIN_DEFAULT))
-        parser.set('VISION', TAG_CROP_TOP_TOPIC_NAME, str(TAG_CROP_DEFAULT))
-        parser.set('VISION', TAG_CROP_BOTTOM_TOPIC_NAME, str(TAG_CROP_DEFAULT))
-        parser.set('VISION', TAG_ERRORS_TOPIC_NAME, str(TAG_ERRORS_DEFAULT))
-
-        with open("/home/pi/" + TAG_CONFIG_FILE_DEFAULT, 'w') as config:
-            parser.write(config)
-            print('wrote tag file:')
-            print({'VISION': dict(parser['VISION'])})
-
-        configfile_failure_ntt.set(True) # recreated config file
-
 def file_read_gen(parser, configfile_failure_ntt):
     config_exists = os.path.isfile(GEN_CONFIG_FILE_DEFAULT)
     if config_exists == True:
@@ -572,7 +388,8 @@ def file_read_gen(parser, configfile_failure_ntt):
         parser.set('GENERAL', 'Contrast', str(CONTRAST_DEFAULT))
         parser.set('GENERAL', 'Auto Exposure', str(AE_DEFAULT))
         parser.set('GENERAL', 'Manual Exposure Time', str(EXPOSURE_DEFAULT))
-        parser.set('GENERAL', 'Y Offset', str(5))
+        parser.set('GENERAL', 'Y Offset', str(CORAL_Y_OFFSET))
+        parser.set('GENERAL', 'Y Crop', str(Y_CROP))
 
         with open("/home/pi/" + GEN_CONFIG_FILE_DEFAULT, 'w') as config:
             parser.write(config)
@@ -580,24 +397,6 @@ def file_read_gen(parser, configfile_failure_ntt):
             print({'GENERAL': dict(parser['GENERAL'])})
 
         configfile_failure_ntt.set(True) # recreated config file
-
-
-
-def tag_check(tag,config_tag):
-    #print(f'id={tag.getId()} e={tag.getHamming()} DM={int(round(tag.getDecisionMargin()))} x={int(round(tag_pose.translation().X()*39.37))} z={int(round(tag_pose.translation().Z()*39.37))}')
-    #e_max = int(float(config_tag.get('VISION', TAG_ERRORS_TOPIC_NAME)))
-    #print(f'id={tag.getId()} e={tag.getHamming()} e_max={e_max} DM={tag.getDecisionMargin()}')
-
-    if tag.getDecisionMargin() > float(config_tag.get('VISION', DECISION_MARGIN_MIN_TOPIC_NAME)) and \
-        tag.getDecisionMargin() < float(config_tag.get('VISION', DECISION_MARGIN_MAX_TOPIC_NAME)) and \
-        (tag.getHamming() <= int(float(config_tag.get('VISION', TAG_ERRORS_TOPIC_NAME)))) and (tag.getId() >= 1 and tag.getId() <= 16):
-        return True
-    else:
-        e_max = float(config_tag.get('VISION', TAG_ERRORS_TOPIC_NAME))
-        dm_min = float(config_tag.get('VISION', DECISION_MARGIN_MIN_TOPIC_NAME))
-        dm_max = float(config_tag.get('VISION', DECISION_MARGIN_MAX_TOPIC_NAME)) 
-        print(f'id={tag.getId()} e={tag.getHamming()} e_max={e_max} DM={tag.getDecisionMargin()} dm_min={dm_min} dm_max={dm_max}')
-        return False
 
 def file_read_coral(parser, configfile_failure_ntt):
     config_exists = os.path.isfile(CORAL_CONFIG_FILE_DEFAULT)
@@ -626,7 +425,7 @@ def file_read_coral(parser, configfile_failure_ntt):
             print({'VISION': dict(parser['VISION'])})
         configfile_failure_ntt.set(False) # config file recreated
 
-def file_write_gen(brightness, contrast, ae_mode, man_exposure_time, y_offset):
+def file_write_gen(brightness, contrast, ae_mode, man_exposure_time, y_offset,y_crop):
 
     parser = configparser.ConfigParser()
     parser.read("/home/pi/" + GEN_CONFIG_FILE_DEFAULT)
@@ -635,51 +434,12 @@ def file_write_gen(brightness, contrast, ae_mode, man_exposure_time, y_offset):
     parser.set('GENERAL', 'Auto Exposure', str(ae_mode))
     parser.set('GENERAL', 'Manual Exposure Time', str(man_exposure_time))
     parser.set('GENERAL', 'Y Offset', str(y_offset))
+    parser.set('GENERAL', 'Y Crop', str(y_crop))
 
     with open("/home/pi/" + GEN_CONFIG_FILE_DEFAULT, 'w') as config:
         parser.write(config)
         print('wrote gen file: ' + "/home/pi/" + GEN_CONFIG_FILE_DEFAULT)
         print({'GENERAL': dict(parser['GENERAL'])})
-
-def nt_update_tags(config,
-              threads,
-              quadDecimate,
-              blur,
-              refineEdges,
-              decodeSharpening,
-              ATDebug,
-              decision_min,
-              decision_max,
-              crop_x,
-              crop_y,
-              errors,
-              configfile
-            ):
-    # sync the stuff in the file with matching values in the file
-    t = float(config.get('VISION', THREADS_TOPIC_NAME))
-    qd = float(config.get('VISION', DECIMATE_TOPIC_NAME))
-    b = float(config.get('VISION', BLUR_TOPIC_NAME))
-    re = ast.literal_eval(config.get('VISION', REFINE_EDGES_TOPIC_NAME))
-    ds = float(config.get('VISION', SHARPENING_TOPIC_NAME))
-    atd = ast.literal_eval(config.get('VISION', APRILTAG_DEBUG_MODE_TOPIC_NAME))
-    dm_min = float(config.get('VISION', DECISION_MARGIN_MIN_TOPIC_NAME))
-    dm_max = float(config.get('VISION', DECISION_MARGIN_MAX_TOPIC_NAME))
-    c_x = float(config.get('VISION', TAG_CROP_TOP_TOPIC_NAME))
-    c_y = float(config.get('VISION', TAG_CROP_BOTTOM_TOPIC_NAME))
-    e = float(config.get('VISION', TAG_ERRORS_TOPIC_NAME))
-
-    threads.set(t)
-    quadDecimate.set(qd)
-    blur.set(b)
-    refineEdges.set(re)
-    decodeSharpening.set(ds)
-    ATDebug.set(atd)
-    decision_min.set(dm_min)
-    decision_max.set(dm_max)
-    crop_x.set(c_x)
-    crop_y.set(c_y)
-    errors.set(e)
-    #configfile.set(str(config.get('VISION', TAG_CONFIG_FILE_TOPIC_NAME)))
 
 def nt_update_corals(config,
               configfile,
@@ -718,19 +478,22 @@ def nt_update_gen(type,
               coral_contrast,
               coral_ae,
               coral_exposure,
-              y_offset):
+              y_offset,
+              y_crop):
     # sync the stuff in the file with matching values in the file
     b = float(config.get('GENERAL', 'Brightness'))
     c = float(config.get('GENERAL', 'Contrast'))
     ae = bool(config.get('GENERAL', 'Auto Exposure'))
     exp = float(config.get('GENERAL', 'Manual Exposure Time'))
     y = float(config.get('GENERAL', 'Y Offset'))
+    crop = float(config.get('GENERAL', 'Y Crop'))
 
     coral_brightness.set(b)
     coral_contrast.set(c)
     coral_ae.set(ae)
     coral_exposure.set(exp)
     y_offset.set(y)
+    y_crop.set(crop)
 
 '''
 all data to send is packaged as an array of bytes, using a Python bytearray, in big-endian format:
@@ -748,20 +511,6 @@ coral:
 number of corals detected: unsigned char (1 byte)
 for each coral: pose x: float (4 bytes), pose y: float (4 bytes), pose z: float (4 bytes), pose x angle: float (4 bytes), pose y angle: float (4 bytes), pose z angle: float (4 bytes)s)
 '''
-def pose_data_bytes(sequence_num, rio_time, image_time, tags, tag_poses):
-    byte_array = bytearray()
-    # get a list of tags that were detected
-    # start the array with sequence number, the RIO's time, image time, and tag type
-    tag_pose = 0
-    byte_array += struct.pack(">LffBB", sequence_num, rio_time, image_time, 1, len(tags))
-    # subtract 3% of the distance Z from the y because of camera tilt
-    for tag in tags:
-        byte_array += struct.pack(">BBfffffff", tag.getId(), tag.getHamming(), tag.getDecisionMargin(), \
-            tag_poses[tag_pose].rotation().X(), tag_poses[tag_pose].rotation().Y(), tag_poses[tag_pose].rotation().Z(), \
-            tag_poses[tag_pose].translation().X(), tag_poses[tag_pose].translation().Y(), tag_poses[tag_pose].translation().Z())
-        tag_pose += 1
-    return byte_array
-
 def piece_pose_data_bytes(sequence_num, rio_time, image_time, type, dist, angle):
     byte_array = bytearray()
     # start the array with sequence number, the RIO's time, image time, and tag type
@@ -829,7 +578,8 @@ def main():
     coral_contrast_ntt = NTGetDouble(ntinst.getDoubleTopic(CORAL_CONTRAST_TOPIC_NAME), CONTRAST_DEFAULT, CONTRAST_DEFAULT, CONTRAST_DEFAULT)
     coral_ae_ntt = NTGetBoolean(ntinst.getBooleanTopic(CORAL_AE_TOPIC_NAME), AE_DEFAULT, AE_DEFAULT, AE_DEFAULT)
     coral_exposure_ntt = NTGetDouble(ntinst.getDoubleTopic(CORAL_EXPOSURE_TOPIC_NAME), EXPOSURE_DEFAULT, EXPOSURE_DEFAULT, EXPOSURE_DEFAULT)
-    coral_crop_y_ntt = NTGetDouble(ntinst.getDoubleTopic(CORAL_CROP_TOP_TOPIC_NAME), CORAL_CROP_TOP_DEFAULT, CORAL_CROP_TOP_DEFAULT, CORAL_CROP_TOP_DEFAULT)
+    coral_crop_y_ntt = NTGetDouble(ntinst.getDoubleTopic(CORAL_CROP_TOP_TOPIC_NAME), 0, 0, 0)
+
 
 
     coral_config_savefile_ntt = NTGetBoolean(ntinst.getBooleanTopic("/Vision/Coral Config Save"), False, False, False)
@@ -858,7 +608,7 @@ def main():
 
     file_read_gen(config_gen, configfilefail_ntt)
     nt_update_gen(vision_type, config_gen, \
-        coral_brightness_ntt, coral_contrast_ntt, coral_ae_ntt, coral_exposure_ntt, gen_coral_y_offset_ntt)
+        coral_brightness_ntt, coral_contrast_ntt, coral_ae_ntt, coral_exposure_ntt, gen_coral_y_offset_ntt, coral_crop_y_ntt)
     
 
     coral_min_h = int(config_coral.get('VISION', CORAL_MIN_HUE_TOPIC_NAME))
@@ -958,6 +708,7 @@ def main():
     cam_settings_changed = False
 
     CORAL_Y_OFFSET = int(config_gen.get('GENERAL', 'Y Offset'))
+    Y_CROP = int(config_gen.get('GENERAL', 'Y Crop'))
 
     while True:
 
@@ -969,12 +720,21 @@ def main():
             seconds = seconds + 1
             temp_sec = temp_sec + 1
 
-        
+            db_c = debug_coral_ntt.get()
 
-            db_n = debug_coral_ntt.get()
+            if db_c == True:
 
-            if db_n == True:
-                    
+                if coral_config_savefile_ntt.get() == True:
+                    file_write_corals(coralconfigfile_ntt.get(), \
+                        coral_min_h_ntt.get(), \
+                        coral_min_s_ntt.get(), \
+                        coral_min_v_ntt.get(), \
+                        coral_max_h_ntt.get(), \
+                        coral_max_s_ntt.get(), \
+                        coral_max_v_ntt.get(), \
+                        coral_min_area_ntt.get())
+                    coral_config_savefile_ntt.set(False)
+          
                 if coral_camera_refresh_nt_ntt.get() == True:
                         file_read_coral(config_coral, configfilefail_ntt)
                         nt_update_corals(config_coral, coralconfigfile_ntt, \
@@ -982,7 +742,7 @@ def main():
                             coral_min_area_ntt)
                         file_read_gen(config_gen, configfilefail_ntt)
                         nt_update_gen(vision_type, config_gen, \
-                            coral_brightness_ntt, coral_contrast_ntt, coral_ae_ntt, coral_exposure_ntt, gen_coral_y_offset_ntt)
+                            coral_brightness_ntt, coral_contrast_ntt, coral_ae_ntt, coral_exposure_ntt, gen_coral_y_offset_ntt, coral_crop_y_ntt)
                         coral_camera_refresh_nt_ntt.set(False)
 
                 if coral_last_brightness != coral_brightness_ntt.get():
@@ -1017,9 +777,15 @@ def main():
                     CORAL_Y_OFFSET = int(round(gen_coral_y_offset_ntt.get(),0))
                     config_gen.set('GENERAL', 'Y Offset', str(CORAL_Y_OFFSET))
                     cam_settings_changed = True
+
+                if Y_CROP != coral_crop_y_ntt.get():
+                    Y_CROP = int(round(coral_crop_y_ntt.get(),0))
+                    config_gen.set('GENERAL', 'Y Crop', str(Y_CROP))
+                    cam_settings_changed = True
+                
                 
                 if cam_settings_changed == True and coral_camera_savefile_ntt.get() == True:
-                    file_write_gen(brightness, contrast, ae_mode, exp_time, CORAL_Y_OFFSET)
+                    file_write_gen(brightness, contrast, ae_mode, exp_time, CORAL_Y_OFFSET, Y_CROP)
                     coral_camera_savefile_ntt.set(False)
                     cam_settings_changed = False
             
@@ -1027,7 +793,7 @@ def main():
             time_check = True
 
                             
-            if db_n == True:
+            if db_c == True:
                  print(f'sec={seconds} corals: ave fps={round(fps_av,0)} fps min={round(fps_av_min,0)} fps max={round(fps_av_max,0)}')
                     #print(f'CORAL_Y_OFFSET={CORAL_Y_OFFSET}')
             else:
@@ -1070,9 +836,9 @@ def main():
         if vision_type == 'coral':
             #if coral_enable_ntt.get() == True:
 
-            db_n = debug_coral_ntt.get()
+            db_c = debug_coral_ntt.get()
 
-            if db_n == True:
+            if db_c == True:
                 coral_min_h = int(coral_min_h_ntt.get())
                 coral_min_s = int(coral_min_s_ntt.get())
                 coral_min_v = int(coral_min_v_ntt.get())
@@ -1089,16 +855,13 @@ def main():
             # for HSV filtering / masking / detecting, convert input image from BGR to HSV
             # but for displaying the image, convert input image from BGR to RGB
             original_image = img.copy()
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img_HSV = cv2.cvtColor(original_image, cv2.COLOR_BGR2HSV)
+            img[0:Y_CROP, 0:w-1] = 0 # crop y axis image using slider user can change
+            img_HSV = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-            # only keep pixels with colors that match the range in color_config
             white_low = np.array([coral_min_h, coral_min_s, coral_min_v])
             white_high = np.array([coral_max_h, coral_max_s, coral_max_v])
             img_mask = cv2.inRange(img_HSV, white_low, white_high)
-            # corals should appear in the region below the bottom of this region
-            #   img_mask[0:260,0:640] = 0
-            
+
             white, useless = cv2.findContours(img_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             #sorting the white pixels from largest to smallest
             whiteSorted = sorted(white, key=lambda x: cv2.contourArea(x), reverse=True)
@@ -1180,14 +943,14 @@ def main():
                             coral_pose_data_bytes_ntt.set(pose_data)
                             NetworkTableInstance.getDefault().flush()
 
-                            if db_n == True:
+                            if db_c == True:
                                 txt = piece_pose_data_string(image_num, rio_time, image_time, distance, angle)
                                 coral_pose_data_string_header_ntt.set(txt)
                                 coral_distance_ntt.set(round(distance,2))
                                 coral_angle_ntt.set(round(angle,2))                       
-                                cv2.circle(img, (center_x, center_y), 12, (200,0,0), -1)
-                                cv2.drawContours(img, [max_contour], 0, (200,0,0), 4)
-                                outputStreamCoral.putFrame(img) # send to dashboard
+                                cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
+                                cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
+                                outputStreamCoral.putFrame(original_image) # send to dashboard
                                 outputMask.putFrame(img_mask) # send to dashboard
                                 if coral_record_data_ntt.get() == True:
                                     coral_data = f'{area:4.1f},{extent:2.1f},{center_x},{center_y},{distance:3.1f},{angle:2.1f}'
@@ -1197,21 +960,8 @@ def main():
                                     coral_record_data_ntt.set(False)
                                 continue
                     
-            if db_n == True:
-                outputStreamCoral.putFrame(img) # send to dashboard
-                outputMask.putFrame(img_mask) # send to dashboard
-                if coral_config_savefile_ntt.get() == True:
-                    file_write_corals(coralconfigfile_ntt.get(), \
-                        coral_min_h_ntt.get(), \
-                        coral_min_s_ntt.get(), \
-                        coral_min_v_ntt.get(), \
-                        coral_max_h_ntt.get(), \
-                        coral_max_s_ntt.get(), \
-                        coral_max_v_ntt.get(), \
-                        coral_min_area_ntt.get())
-                    coral_config_savefile_ntt.set(False)
                     
-        else:
+        else: #for future add algae here
             continue
 
 main()
