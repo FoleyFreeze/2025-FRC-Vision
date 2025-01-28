@@ -878,15 +878,15 @@ def main():
                 area = cv2.contourArea(y)
 
                 #uncomment the following block to get raw data output for debugging and calibrating distance / angle
-                '''
+                
                 r_x,r_y,r_w,r_h = cv2.boundingRect(y)
                 center_x = r_x + int(round(r_w / 2)) + CORAL_X_OFFSET
                 center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
                 extent = float(area) / (r_w * r_h)
-                print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
-                '''
+                #print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
+                
 
-                if area > 300:
+                if area > 1000:
                     r_x,r_y,r_w,r_h = cv2.boundingRect(y)
                     center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
 
@@ -917,17 +917,20 @@ def main():
                     #extent goes way down when we get real close
                     if (extent > extent_min and extent < 1.0):
 
-                        if center_y >= 390: # don't see a full coral this close, so y value for this distance is a bit off so force it to 0
+                    # don't see a full coral this close, so y value for this distance is a bit off so force it to 0
+                        if center_y >= 390: 
                             distance = 0
                         else:
                             distance = coral_regress_distance(center_y) # get distance (inches) using y location
                         
-                        leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
-                        rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
-                        topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
-                        bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
 
-                        angle = 0
+                        #Finds bounding rect instead of extreme points 
+                        rect = cv2.minAreaRect(max_contour)
+                        box = cv2.boxPoints(rect)
+                        box = np.int0(box)   
+                        angle = rect[2]
+                        # rect[2] is float angle in degrees
+                        print(f'angle = {angle:3.3f}, 90-angle = {(90-angle):3.3f}')
                         
                         if (distance >= 0 and distance < 360) and (angle >= -70 and angle < 70): # sanity check'''
                     
@@ -953,9 +956,10 @@ def main():
                                 txt = piece_pose_data_string(image_num, rio_time, image_time, distance, angle)
                                 coral_pose_data_string_header_ntt.set(txt)
                                 coral_distance_ntt.set(round(distance,2))
-                                coral_angle_ntt.set(round(angle,2))                       
+                                coral_angle_ntt.set(round(angle,2))                  
+                                cv2.drawContours(original_image,[box],0,(0,0,255),2)
                                 cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
-                                cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
+                               # cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
                                 outputStreamCoral.putFrame(original_image) # send to dashboard
                                 outputMask.putFrame(img_mask) # send to dashboard
                                 if coral_record_data_ntt.get() == True:
