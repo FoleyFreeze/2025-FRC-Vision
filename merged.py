@@ -291,16 +291,10 @@ class FrameServer:
 
 def coral_regress_distance(y):
     terms = [
-     5.6042530346620970e+002,
-    -2.1541292739721818e+001,
-     4.6098851143728686e-001,
-    -5.9768933371784367e-003,
-     4.8838220799736427e-005,
-    -2.5636133459344433e-007,
-     8.6119866667699354e-010,
-    -1.7871693995785495e-012,
-     2.0846186505905067e-015,
-    -1.0446668966595392e-018
+    -2.5190261681829952e+002,
+     2.6573959253152246e+000,
+    -7.3688136100950232e-003,
+     6.0807308128165267e-006
     ]
     
     t = 1
@@ -906,19 +900,23 @@ def main():
 
                 if (center_y > 17  and center_y < 240*2):
 
-                    if (center_y > 240*2): # at really close, can't see the bottom, aspect ratio goes way up 
-                        extent_min = 0.25
-                    else:
-                        extent_min = 0.25
+                    # if (center_y > 240*2): # at really close, can't see the bottom, aspect ratio goes way up 
+                    #     extent_min = 0.25
+                    # else:
+                    #     extent_min = 0.25
 
                     #Extent is the ratio of contour area to bounding rectangle area.
-                    extent = float(area) / (r_w * r_h)
+                    #extent = float(area) / (r_w * r_h)
+
+                    aspect_ratio = (r_w/r_h)
+
+                    
 
                     #extent goes way down when we get real close
-                    if (extent > extent_min and extent < 1.0):
+                    if (aspect_ratio > 0.2 and aspect_ratio < 3.5):
 
                     # don't see a full coral this close, so y value for this distance is a bit off so force it to 0
-                        if center_y >= 390: 
+                        if center_y >= 460: 
                             distance = 0
                         else:
                             distance = coral_regress_distance(center_y) # get distance (inches) using y location
@@ -930,9 +928,9 @@ def main():
                         box = np.int0(box)   
                         angle = rect[2]
                         # rect[2] is float angle in degrees
-                        print(f'angle = {angle:3.3f}, 90-angle = {(90-angle):3.3f}')
+                        print(f'distance={distance:4.1f}, y distance={center_y}, area={area:3.3f}, aspect ratio={aspect_ratio:3.3f}, angle = {(90-angle):3.3f}')
                         
-                        if (distance >= 0 and distance < 360) and (angle >= -70 and angle < 70): # sanity check'''
+                        if (distance >= 0 and distance < 84) and (angle >= 0 and angle < 90): # sanity check'''
                     
                             image_num += 1
                             image_counter += 1
