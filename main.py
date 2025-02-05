@@ -676,6 +676,9 @@ def main():
                                         f.write('\n')
                                     coral_record_data_ntt.set(False)
                                 continue
+
+                outputStreamCoral.putFrame(original_image) # send to dashboard
+                outputMask.putFrame(img_mask) # send to dashboard
                     
                     
         else: #for future add algae here

@@ -1,300 +1,9 @@
-from cscore import CameraServer
-import ntcore
-from ntcore import NetworkTableInstance
-from enum import Enum
-import configparser
-import robotpy_apriltag
-import cv2
-import numpy as np
-import time
-import os
-import os.path
-import ast
-import math
-import struct
-from math import log10, floor
-import json
-from picamera2 import Picamera2
-import libcamera
-from libcamera import controls
-import threading
-from pprint import *
-import sys
-import pickle
-
-
-
-
-X_RES = 320
-Y_RES = 240
-UPTIME_UPDATE_INTERVAL = 1
-TEMP_UPDATE_INTERVAL= 30
-DEBUG_MODE_DEFAULT = False
-THREADS_DEFAULT = 3
-DECIMATE_DEFAULT = 1.0
-BLUR_DEFAULT = 0.0
-REFINE_EDGES_DEFAULT = True
-SHARPENING_DEFAULT = 0.25
-APRILTAG_DEBUG_MODE_DEFAULT = False
-DECISION_MARGIN_DEFAULT = 125
-CAMERA_CAL_FILE_NAME = "MultiMatrix.npz.PiGS.640.480" # "MultiMatrix.npz" #"MultiMatrix.npz.PiGS.320.240" #"MultiMatrix.npz" #MultiMatrix.npz.PiGS.640.480" # "MultiMatrix.npz.PiGS.320.240" # "MultiMatrix.npz.webcam.320.240" # "MultiMatrix.npz.webcam.640.480"
-THREADS_TOPIC_NAME = "/Vision/Threads"
-DECIMATE_TOPIC_NAME = "/Vision/Decimate"
-BLUR_TOPIC_NAME = "/Vision/Blur"
-REFINE_EDGES_TOPIC_NAME = "/Vision/Edge Refine"
-SHARPENING_TOPIC_NAME = "/Vision/Sharpening"
-APRILTAG_DEBUG_MODE_TOPIC_NAME = "/Vision/April Tag Debug"
-DECISION_MARGIN_MIN_TOPIC_NAME = "/Vision/Decision Margin Min"
-DECISION_MARGIN_MAX_TOPIC_NAME = "/Vision/Decision Margin Max"
-TAG_CONFIG_FILE_TOPIC_NAME = "/Vision/Tag Config File"
-#ACTIVE_TOPIC_NAME = "/Vision/Active"
-TAG_ACTIVE_TOPIC_NAME = "/Vision/Tag Active" 
-CORAL_ACTIVE_TOPIC_NAME = "/Vision/Coral Active" 
-POSE_DATA_RAW_TOPIC_NAME = "Tag Pose Data Bytes" #cannot say /Vision becuase we already do in NTGetRaw
-CORAL_POSE_DATA_RAW_TOPIC_NAME = "Coral Pose Data Bytes" #cannot say /Vision becuase we already do in NTGetRaw
-POSE_DATA_STRING_TOPIC_NAME_HEADER ="/Vision/Pose Data Header"
-CORAL_POSE_DATA_STRING_TOPIC_NAME_HEADER = "/Vision/Coral Pose Data Header"
-POSE_DATA_STRING_TOPIC_NAME_DATA_TRANSLATION ="/Vision/Pose Data Trans"
-POSE_DATA_STRING_TOPIC_NAME_DATA_ROTATION ="/Vision/Pose Data Rot"
-TAG_PI_TEMP_TOPIC_NAME = "/Vision/Tag Temperature"
-CORAL_PI_TEMP_TOPIC_NAME = "/Vision/Coral Temperature"
-RIO_TIME_TOPIC_NAME = "/Vision/RIO Time"
-
-Z_IN_TOPIC_NAME = "/Vision/Z In"
-CORAL_MIN_HUE_TOPIC_NAME = "/Vision/Coral Min Hue"
-CORAL_MIN_SAT_TOPIC_NAME = "/Vision/Coral Min Sat"
-CORAL_MIN_VAL_TOPIC_NAME = "/Vision/Coral Min Val"
-CORAL_MAX_HUE_TOPIC_NAME = "/Vision/Coral Max Hue"
-CORAL_MAX_SAT_TOPIC_NAME = "/Vision/Coral Max Sat"
-CORAL_MAX_VAL_TOPIC_NAME = "/Vision/Coral Max Val"
-CORAL_CONFIG_FILE_TOPIC_NAME = "/Vision/Coral Config File"
-CORAL_CONFIG_FILE_DEFAULT = "coral_config.ini"
-TAG_CONFIG_FILE_DEFAULT = "tag_config.ini"
-GEN_CONFIG_FILE_DEFAULT = "gen_config.ini"
-CORAL_MIN_HUE = 0
-CORAL_MIN_SAT = 0
-CORAL_MIN_VAL = 0
-CORAL_MAX_HUE = 179
-CORAL_MAX_SAT = 255
-CORAL_MAX_VAL = 255
-TAG_ENABLE_TOPIC_NAME = "/Vision/Tag Enable"
-CORAL_ENABLE_TOPIC_NAME = "/Vision/Coral Enable"
-TOP_LINE_DIST_FROM_TOP = 0.15
-BOTTOM_LINE_DIST_FROM_TOP = 0.7
-CORAL_MIN_AREA_TOPIC_NAME = "/Vision/Coral Min Area"
-CORAL_MIN_AREA = 44 #275
-CORAL_ANGLE_TOPIC_NAME = "/Vision/Coral Angle"
-WRITE_TAG_IMAGE = False
-TAG_RECORD_ENABLE_TOPIC_NAME = "/Vision/Tag Record"
-TAG_RECORD_REMOVE_TOPIC_NAME = "/Vision/Tag Remove"
-CORAL_RECORD_DATA_TOPIC_NAME = "/Vision/Coral Record"
-CORAL_X_OFFSET = 0
-CORAL_Y_OFFSET = 5
-Y_CROP = 0
-FPS_NUM_SAMPLES = 100 #after this number of images the fps average is calulated
-CORAL_CROP_TOP_TOPIC_NAME = "/Vision/Coral Crop Top"
-CORAL_NUM_PIXELS_FROM_CENTER_BLANK = 15
-TAG_BRIGHTNESS_TOPIC_NAME = "/Vision/Tag Brightness"
-CORAL_BRIGHTNESS_TOPIC_NAME = "/Vision/Coral Brightness"
-
-BRIGHTNESS_DEFAULT = 0.0
-TAG_CONTRAST_TOPIC_NAME = "/Vision/Tag Contrast"
-CORAL_CONTRAST_TOPIC_NAME = "/Vision/Coral Contrast"
-CONTRAST_DEFAULT = 1.0
-
-GEN_CORAL_Y_OFFSET_TOPIC_NAME = "/Vision/Coral Y Offset"
-
-TAG_ERRORS_TOPIC_NAME = "/Vision/Tag Corrected Errors"
-TAG_ERRORS_DEFAULT = 0
-TAG_AE_TOPIC_NAME = "/Vision/Tag Auto Exposure"
-CORAL_AE_TOPIC_NAME = "/Vision/Coral Auto Exposure"
-AE_DEFAULT = True
-TAG_EXPOSURE_TOPIC_NAME = "/Vision/Tag Manual Exposure" # only used if AE_TOPIC_NAME is disabled
-CORAL_EXPOSURE_TOPIC_NAME = "/Vision/Coral Manual Exposure" # only used if AE_TOPIC_NAME is disabled
-EXPOSURE_DEFAULT = 1000 # in microseconds - total guess as default 
-POSE_DATA_X_DEG_TOPIC_NAME = "/Vision/X Deg"
-POSE_DATA_Y_DEG_TOPIC_NAME = "/Vision/Y Deg"
-POSE_DATA_Z_DEG_TOPIC_NAME = "/Vision/Z Deg"
-POSE_DATA_X_IN_TOPIC_NAME = "/Vision/X In"
-POSE_DATA_Y_IN_TOPIC_NAME = "/Vision/Y In"
-TAG_DETECTED_ID_TOPIC_NAME = "/Vision/Tag Id"
-TAG_DETECTED_DM_TOPIC_NAME = "/Vision/Tag DM"
-TAG_DETECTED_ERRORS_TOPIC_NAME = "/Vision/Tag Errors"
-class NTConnectType(Enum):
-    SERVER = 1
-    CLIENT = 2
-class NTGetString:
-    def __init__(self, stringTopic: ntcore.StringTopic, init, default, failsafe):
-        self.init = init
-        self.default = default
-        self.failsafe = failsafe
-        # start subscribing; the return value must be retained.
-        # the parameter is the default value if no value is available when get() is called
-        self.stringTopic = stringTopic.getEntry(failsafe)
-
-        self.stringTopic.setDefault(default)
-        self.stringTopic.set(init)
-
-    def get(self):
-        return self.stringTopic.get(self.failsafe)
-
-    def set(self, string):
-        self.stringTopic.set(string)
-
-    def unpublish(self):
-        # you can stop publishing while keeping the subscriber alive
-        self.stringTopic.unpublish()
-
-    def close(self):
-        # stop subscribing/publishing
-        self.stringTopic.close()
-class NTGetBoolean:
-    def __init__(self, boolTopic: ntcore.BooleanTopic, init, default, failsafe):
-        self.init = init
-        self.default = default
-        self.failsafe = failsafe
-
-        # start subscribing; the return value must be retained.
-        # the parameter is the default value if no value is available when get() is called
-        self.boolTopic = boolTopic.getEntry(failsafe)
-
-        self.boolTopic.setDefault(default)
-        self.boolTopic.set(init)
-
-    def get(self):
-        return self.boolTopic.get(self.failsafe)
-    def set(self, boolean):
-        self.boolTopic.set(boolean)
-    def unpublish(self):
-        # you can stop publishing while keeping the subscriber alive
-        self.boolTopic.unpublish()
-
-    def close(self):
-        # stop subscribing/publishing
-        self.boolTopic.close()
-class NTGetDouble:
-    def __init__(self, dblTopic: ntcore.DoubleTopic, init, default, failsafe):
-        self.init = init
-        self.default = default
-        self.failsafe = failsafe
-        # start subscribing; the return value must be retained.
-        # the parameter is the default value if no value is available when get() is called
-        self.dblTopic = dblTopic.getEntry(failsafe)
-        self.dblTopic.setDefault(default)
-        self.dblTopic.set(init)
-
-    def get(self):
-        return self.dblTopic.get(self.failsafe)
-
-    def set(self, double):
-        self.dblTopic.set(double)
-
-    def unpublish(self):
-        # you can stop publishing while keeping the subscriber alive
-        self.dblTopic.unpublish()
-
-    def close(self):
-        # stop subscribing/publishing
-        self.dblTopic.close()
-class NTGetRaw:
-    def __init__(self, ntinst, topicname, init, default, failsafe):
-        self.init = init
-        self.default = default
-        self.failsafe = failsafe
-        self.table = ntinst.getTable("/Vision")
-
-        self.pub = self.table.getRawTopic(topicname).publish("raw")
-
-    def set(self, raw):
-        self.pub.set(raw)
-
-    def unpublish(self):
-        # you can stop publishing while keeping the subscriber alive
-        self.pub.unpublish()
-
-    def close(self):
-        # stop subscribing/publishing
-        self.pub.close()
-#!/usr/bin/python3
-
-# These two are only needed for the demo code below the FrameServer class.
-import time
-from threading import Condition, Thread
-
-from picamera2 import Picamera2
-
-
-class FrameServer:
-    def __init__(self, picam2, stream='main'):
-        """A simple class that can serve up frames from one of the Picamera2's configured streams to multiple other threads.
-
-        Pass in the Picamera2 object and the name of the stream for which you want
-        to serve up frames.
-        """
-        self._picam2 = picam2
-        self._stream = stream
-        self._array = None
-        self._condition = Condition()
-        self._running = True
-        self._count = 0
-        self._thread = Thread(target=self._thread_func, daemon=True)
-
-    @property
-    def count(self):
-        """A count of the number of frames received."""
-        return self._count
-
-    def start(self):
-        """To start the FrameServer, you will also need to start the Picamera2 object."""
-        self._thread.start()
-
-    def stop(self):
-        """To stop the FrameServer
-
-        First stop any client threads (that might be
-        blocked in wait_for_frame), then call this stop method. Don't stop the
-        Picamera2 object until the FrameServer has been stopped.
-        """
-        self._running = False
-        self._thread.join()
-
-    def _thread_func(self):
-        count = 0
-        while self._running:
-            array = self._picam2.capture_array(self._stream)
-            self._count += 1
-            ''' # uncomment this block to see exposure time for images
-            count += 1
-            if (count > 1000):
-                print(self._picam2.capture_metadata()['ExposureTime'])
-                count = 0
-            '''
-            with self._condition:
-                self._array = array
-                self._condition.notify_all()
-
-    def wait_for_frame(self, previous=None):
-        """You may optionally pass in the previous frame that you got last time you called this function.
-
-        This will guarantee that you don't get duplicate frames
-        returned in the event of spurious wake-ups, and it may even return more
-        quickly in the case where a new frame has already arrived.
-        """
-        with self._condition:
-            if previous is not None and self._array is not previous:
-                return self._array
-            while True:
-                self._condition.wait()
-                if self._array is not previous:
-                    return self._array
-
-
 def coral_regress_distance(y):
     terms = [
-    -2.5190261681829952e+002,
-     2.6573959253152246e+000,
-    -7.3688136100950232e-003,
-     6.0807308128165267e-006
+    6.1859563724961743e+002,
+    -4.7682211363001379e+000,
+    1.3310376442178884e-002,
+    -1.2908581705880678e-005
     ]
     
     t = 1
@@ -876,13 +585,11 @@ def main():
                 r_x,r_y,r_w,r_h = cv2.boundingRect(y)
                 center_x = r_x + int(round(r_w / 2)) + CORAL_X_OFFSET
                 center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
-                extent = float(area) / (r_w * r_h)
+                # extent = float(area) / (size[0] * size[1])
                 #print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
                 
 
                 if area > 1000:
-                    r_x,r_y,r_w,r_h = cv2.boundingRect(y)
-                    center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
 
                     if center_y > center_y_max:
                         center_y_max = center_y
@@ -894,16 +601,16 @@ def main():
 
                 area = cv2.contourArea(max_contour)
 
-                r_x,r_y,r_w,r_h = cv2.boundingRect(max_contour)
+                r_x,r_y,r_w,r_h = cv2.boundingRect(y)
                 center_x = r_x + int(round(r_w / 2)) + CORAL_X_OFFSET
                 center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
 
                 if (center_y > 17  and center_y < 240*2):
 
-                    # if (center_y > 240*2): # at really close, can't see the bottom, aspect ratio goes way up 
-                    #     extent_min = 0.25
-                    # else:
-                    #     extent_min = 0.25
+                    if (center_y > 240*2): # at really close, can't see the bottom, aspect ratio goes way up 
+                        extent_min = 0.25
+                    else:
+                        extent_min = 0.25
 
                     #Extent is the ratio of contour area to bounding rectangle area.
                     #extent = float(area) / (r_w * r_h)
@@ -911,8 +618,7 @@ def main():
                     aspect_ratio = (r_w/r_h)
 
                     
-
-                    #extent goes way down when we get real close
+                    # #extent goes way down when we get real close
                     if (aspect_ratio > 0.2 and aspect_ratio < 3.5):
 
                     # don't see a full coral this close, so y value for this distance is a bit off so force it to 0
@@ -927,52 +633,59 @@ def main():
                         box = cv2.boxPoints(rect)
                         box = np.int0(box)   
                         angle = rect[2]
+
                         # rect[2] is float angle in degrees
-                        print(f'distance={distance:4.1f}, y distance={center_y}, area={area:3.3f}, aspect ratio={aspect_ratio:3.3f}, angle = {(90-angle):3.3f}')
-                        
-                        if (distance >= 0 and distance < 84) and (angle >= 0 and angle < 90): # sanity check'''
+                    print(f'distance={distance:4.1f}, y distance={center_y}, area={area:3.3f}')
                     
-                            image_num += 1
-                            image_counter += 1
-                            image_time = time.perf_counter() - t1_time
-                            image_time_av_total += image_time
+                    if (distance >= 0 and distance <= 84) and (angle >= 0 and angle <= 90): # sanity check'''
+                
+                        image_num += 1
+                        image_counter += 1
+                        image_time = time.perf_counter() - t1_time
+                        image_time_av_total += image_time
 
-                            if image_counter == FPS_NUM_SAMPLES:
-                                fps_av = 1/(image_time_av_total/image_counter)
-                                if fps_av < fps_av_min:
-                                    fps_av_min = fps_av
-                                if fps_av > fps_av_max:
-                                    fps_av_max = fps_av
-                                image_time_av_total = 0
-                                image_counter = 0
+                        if image_counter == FPS_NUM_SAMPLES:
+                            fps_av = 1/(image_time_av_total/image_counter)
+                            if fps_av < fps_av_min:
+                                fps_av_min = fps_av
+                            if fps_av > fps_av_max:
+                                fps_av_max = fps_av
+                            image_time_av_total = 0
+                            image_counter = 0
 
-                            pose_data = piece_pose_data_bytes(image_num, rio_time, image_time, 3, distance, angle)
-                            coral_pose_data_bytes_ntt.set(pose_data)
-                            NetworkTableInstance.getDefault().flush()
+                        pose_data = piece_pose_data_bytes(image_num, rio_time, image_time, 3, distance, angle)
+                        coral_pose_data_bytes_ntt.set(pose_data)
+                        NetworkTableInstance.getDefault().flush()
 
-                            if db_c == True:
-                                txt = piece_pose_data_string(image_num, rio_time, image_time, distance, angle)
-                                coral_pose_data_string_header_ntt.set(txt)
-                                coral_distance_ntt.set(round(distance,2))
-                                coral_angle_ntt.set(round(angle,2))                  
-                                cv2.drawContours(original_image,[box],0,(0,0,255),2)
-                                cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
-                               # cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
-                                outputStreamCoral.putFrame(original_image) # send to dashboard
-                                outputMask.putFrame(img_mask) # send to dashboard
-                                if coral_record_data_ntt.get() == True:
-                                    coral_data = f'{area:4.1f},{extent:2.1f},{center_x},{center_y},{distance:3.1f},{angle:2.1f}'
-                                    with open('coral_data.txt', 'a') as f:
-                                        f.write(coral_data)
-                                        f.write('\n')
-                                    coral_record_data_ntt.set(False)
-                                continue
-
-                outputStreamCoral.putFrame(original_image) # send to dashboard
-                outputMask.putFrame(img_mask) # send to dashboard
+                        if db_c == True:
+                            txt = piece_pose_data_string(image_num, rio_time, image_time, distance, angle)
+                            coral_pose_data_string_header_ntt.set(txt)
+                            coral_distance_ntt.set(round(distance,2))
+                            coral_angle_ntt.set(round(angle,2))                  
+                            cv2.drawContours(original_image,[box],0,(0,0,255),2)
+                            cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
+                            #cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
+                            outputStreamCoral.putFrame(original_image) # send to dashboard
+                            outputMask.putFrame(img_mask) # send to dashboard
+                            if coral_record_data_ntt.get() == True:
+                                coral_data = f'{area:4.1f},{extent:2.1f},{center_x},{center_y},{distance:3.1f},{angle:2.1f}'
+                                with open('coral_data.txt', 'a') as f:
+                                    f.write(coral_data)
+                                    f.write('\n')
+                                coral_record_data_ntt.set(False)
+                            continue
+                        
+                    print("failed sanity check")
+                    
+                # else:
+                #     print("center_y range check")
+        
+            else:
+                print("failed max contour")
                     
                     
         else: #for future add algae here
+            print("failed coral type")
             continue
 
 main()
