@@ -1,9 +1,9 @@
 def coral_regress_distance(y):
     terms = [
-    6.6245765312089372e+002,
-    -5.1885435509701523e+000,
-    1.4580529288100672e-002,
-    -1.4156954210541943e-005
+    -2.5190261681829952e+002,
+     2.6573959253152246e+000,
+    -7.3688136100950232e-003,
+     6.0807308128165267e-006
     ]
     
     t = 1
@@ -413,14 +413,6 @@ def main():
     CORAL_Y_OFFSET = int(config_gen.get('GENERAL', 'Y Offset'))
     Y_CROP = int(config_gen.get('GENERAL', 'Y Crop'))
 
-    xp = [406, 384, 361, 325, 300, 280]
-    print("y pixel value =", xp)
-    fp = [12, 18, 24, 30, 36, 42]
-    print("distance values =", fp)
-    
-    def polyregress(xdata,ydata,degree):
-        return numpy.polynomial.polynomial.polyfit(xdata,ydata,3)
-
     while True:
 
         rio_time = rio_time_ntt.get()
@@ -542,10 +534,7 @@ def main():
         #
         # Insert your image processing logic here!
 
-        area = 0
-
-        num_areas = 0
-
+          
         #CORAL!!!
         if vision_type == 'coral':
             #if coral_enable_ntt.get() == True:
@@ -596,8 +585,10 @@ def main():
                 r_x,r_y,r_w,r_h = cv2.boundingRect(y)
                 center_x = r_x + int(round(r_w / 2)) + CORAL_X_OFFSET
                 center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
-                extent = float(area) / (r_w * r_h)                                
+                extent = float(area) / (r_w * r_h)
+                #print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
                 
+
                 if area > 1000:
                     r_x,r_y,r_w,r_h = cv2.boundingRect(y)
                     center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
@@ -608,42 +599,36 @@ def main():
             
             # at this point, max_contour points to closest shape by vertical y or None if the area of all were too small
             # now need to determine if this shape is a coral
-
             if max_contour is not None:
 
-                '''
-                num_areas = num_areas+1
-                area = ( area + cv2.contourArea(max_contour) ) / num_areas
-                distance = area*(36/6300)
-                '''
-                
+                area = cv2.contourArea(max_contour)
+
                 r_x,r_y,r_w,r_h = cv2.boundingRect(max_contour)
                 center_x = r_x + int(round(r_w / 2)) + CORAL_X_OFFSET
                 center_y = r_y + int(round(r_h / 2)) + CORAL_Y_OFFSET
-                
-                
+
                 if (center_y > 17  and center_y < 240*2):
 
-                    if (center_y > 240*2): # at really close, can't see the bottom, aspect ratio goes way up 
-                        extent_min = 0.25
-                    else:
-                        extent_min = 0.25
+                    # if (center_y > 240*2): # at really close, can't see the bottom, aspect ratio goes way up 
+                    #     extent_min = 0.25
+                    # else:
+                    #     extent_min = 0.25
 
-                    print(f' y={center_y},area={area:3.3f},extent={extent:3.3f}')
-                    
                     #Extent is the ratio of contour area to bounding rectangle area.
-                    extent = float(area) / (r_w * r_h)
+                    #extent = float(area) / (r_w * r_h)
 
-                    #print(f'r_w={w_and_h[0]}, r_h={w_and_h[1]}, y={center_y},area={area:3.3f},extent={extent:3.3f},distance = {(distance):3.3f}')
-                                
+                    aspect_ratio = (r_w/r_h)
+
+                    
+
                     #extent goes way down when we get real close
-                    if (extent > extent_min and extent < 1.0):
+                    if (aspect_ratio > 0.2 and aspect_ratio < 3.5):
 
-                        #don't see a full coral this close, so y value for this distance is a bit off so force it to 0
-                        if center_y >= 500:
-                             distance = 0
+                    # don't see a full coral this close, so y value for this distance is a bit off so force it to 0
+                        if center_y >= 460: 
+                            distance = 0
                         else:
-                             distance = coral_regress_distance(center_y) # get distance (inches) using y location
+                            distance = coral_regress_distance(center_y) # get distance (inches) using y location
                         
 
                         #Finds bounding rect instead of extreme points 
@@ -651,18 +636,10 @@ def main():
                         box = cv2.boxPoints(rect)
                         box = np.int0(box)   
                         angle = rect[2]
-                
-                        #print(f'coral_x={center[0]} coral_y={center[1]}')
                         # rect[2] is float angle in degrees
-                        #print(f'angle = {angle:3.3f}, 90-angle = {(90-angle):3.3f}')
+                        print(f'distance={distance:4.1f}, y distance={center_y}, area={area:3.3f}, aspect ratio={aspect_ratio:3.3f}, angle = {(90-angle):3.3f}')
                         
-                        distance = coral_regress_distance(center_y)
-                        print(f'y = {center_y} , distance = {(distance):3.3f}')
-
-                        
-                        if (distance >= 0 and distance < 84) and (angle >= -90 and angle < 100): # sanity check'''
-
-                            #print (f'distance = {distance:3.3f}')
+                        if (distance >= 0 and distance < 84) and (angle >= 0 and angle < 90): # sanity check'''
                     
                             image_num += 1
                             image_counter += 1
@@ -689,7 +666,7 @@ def main():
                                 coral_angle_ntt.set(round(angle,2))                  
                                 cv2.drawContours(original_image,[box],0,(0,0,255),2)
                                 cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
-                                cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
+                               # cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
                                 outputStreamCoral.putFrame(original_image) # send to dashboard
                                 outputMask.putFrame(img_mask) # send to dashboard
                                 if coral_record_data_ntt.get() == True:
@@ -699,6 +676,9 @@ def main():
                                         f.write('\n')
                                     coral_record_data_ntt.set(False)
                                 continue
+
+                outputStreamCoral.putFrame(original_image) # send to dashboard
+                outputMask.putFrame(img_mask) # send to dashboard
                     
                     
         else: #for future add algae here
