@@ -1160,108 +1160,6 @@
               "imageHeight": 0
             }
           },
-          "0,0": {
-            "size": [
-              3,
-              2
-            ],
-            "content": {
-              "_type": "Number Slider",
-              "_source0": "network_table:///Vision/Cage Min Hue",
-              "_title": "Vision/Cage Min Hue",
-              "_glyph": 148,
-              "_showGlyph": false,
-              "Slider Settings/Min": 0.0,
-              "Slider Settings/Max": 179.0,
-              "Slider Settings/Block increment": 1.0,
-              "Visuals/Display value": true
-            }
-          },
-          "0,2": {
-            "size": [
-              3,
-              2
-            ],
-            "content": {
-              "_type": "Number Slider",
-              "_source0": "network_table:///Vision/Cage Min Sat",
-              "_title": "Vision/Cage Min Sat",
-              "_glyph": 148,
-              "_showGlyph": false,
-              "Slider Settings/Min": 0.0,
-              "Slider Settings/Max": 255.0,
-              "Slider Settings/Block increment": 1.0,
-              "Visuals/Display value": true
-            }
-          },
-          "0,4": {
-            "size": [
-              3,
-              2
-            ],
-            "content": {
-              "_type": "Number Slider",
-              "_source0": "network_table:///Vision/Cage Min Val",
-              "_title": "Vision/Cage Min Val",
-              "_glyph": 148,
-              "_showGlyph": false,
-              "Slider Settings/Min": 0.0,
-              "Slider Settings/Max": 255.0,
-              "Slider Settings/Block increment": 1.0,
-              "Visuals/Display value": true
-            }
-          },
-          "3,2": {
-            "size": [
-              3,
-              2
-            ],
-            "content": {
-              "_type": "Number Slider",
-              "_source0": "network_table:///Vision/Cage Max Sat",
-              "_title": "Vision/Cage Max Sat",
-              "_glyph": 148,
-              "_showGlyph": false,
-              "Slider Settings/Min": 0.0,
-              "Slider Settings/Max": 255.0,
-              "Slider Settings/Block increment": 1.0,
-              "Visuals/Display value": true
-            }
-          },
-          "3,0": {
-            "size": [
-              3,
-              2
-            ],
-            "content": {
-              "_type": "Number Slider",
-              "_source0": "network_table:///Vision/Cage Max Hue",
-              "_title": "Vision/Cage Max Hue",
-              "_glyph": 148,
-              "_showGlyph": false,
-              "Slider Settings/Min": 0.0,
-              "Slider Settings/Max": 179.0,
-              "Slider Settings/Block increment": 1.0,
-              "Visuals/Display value": true
-            }
-          },
-          "3,4": {
-            "size": [
-              3,
-              2
-            ],
-            "content": {
-              "_type": "Number Slider",
-              "_source0": "network_table:///Vision/Cage Max Val",
-              "_title": "Vision/Cage Max Val",
-              "_glyph": 148,
-              "_showGlyph": false,
-              "Slider Settings/Min": 0.0,
-              "Slider Settings/Max": 255.0,
-              "Slider Settings/Block increment": 1.0,
-              "Visuals/Display value": true
-            }
-          },
           "0,6": {
             "size": [
               3,
@@ -1373,6 +1271,223 @@
               "_glyph": 148,
               "_showGlyph": false
             }
+          },
+          "0,0": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Min Hue Red",
+              "_title": "Vision/Cage Min Hue Red",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 179.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "3,0": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Max Hue Red",
+              "_title": "Vision/Cage Max Hue Red",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 179.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "3,2": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Max Sat Red",
+              "_title": "Vision/Cage Max Sat Red",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "0,2": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Min Sat Red",
+              "_title": "Vision/Cage Min Sat Red",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "0,4": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Min Val Red",
+              "_title": "Vision/Cage Min Val Red",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "3,4": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Max Val Red",
+              "_title": "Vision/Cage Max Val Red",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "0,8": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Min Hue Blue",
+              "_title": "Vision/Cage Min Hue Blue",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 179.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "3,8": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Max Hue Blue",
+              "_title": "Vision/Cage Max Hue Blue",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 179.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "0,10": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Min Sat Blue",
+              "_title": "Vision/Cage Min Sat Blue",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "3,10": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Max Sat Blue",
+              "_title": "Vision/Cage Max Sat Blue",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "0,12": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Min Val Blue",
+              "_title": "Vision/Cage Min Val Blue",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "3,12": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Number Slider",
+              "_source0": "network_table:///Vision/Cage Max Val Blue",
+              "_title": "Vision/Cage Max Val Blue",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Slider Settings/Min": 0.0,
+              "Slider Settings/Max": 255.0,
+              "Slider Settings/Block increment": 1.0,
+              "Visuals/Display value": true
+            }
+          },
+          "7,10": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Toggle Switch",
+              "_source0": "network_table:///FMSInfo/isRedAlliance",
+              "_title": "RedAlliance",
+              "_glyph": 148,
+              "_showGlyph": false
+            }
           }
         }
       }
@@ -1392,8 +1507,8 @@
     }
   ],
   "windowGeometry": {
-    "x": -2568.0,
-    "y": -83.0,
+    "x": -25.0,
+    "y": 0.0,
     "width": 2576.0,
     "height": 1056.0
   }

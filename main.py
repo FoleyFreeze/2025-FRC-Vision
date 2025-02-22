@@ -474,6 +474,7 @@ def main():
     cage_camera_refresh_nt_ntt = NTGetBoolean(ntinst.getBooleanTopic("/Vision/Cage Camera Refresh Nt"), False, False, False)
 
     is_red_alliance = NTGetBoolean(ntinst.getBooleanTopic(ALLIANCE_TYPE_TOPIC_NAME), True, True, True)
+    perp_ntt = NTGetBoolean(ntinst.getBooleanTopic(PERP_TOPIC_NAME), False, False, False)
 
     # use for file
     config_coral = configparser.ConfigParser()
@@ -627,16 +628,8 @@ def main():
         current_seconds = time.time()
         time_check = False
         
-        if game_piece == 'coral':
-            if debug_coral_ntt.get() == True:
-                db_mode = True
-            else: 
-                db_mode = False
-        if game_piece == 'cage':
-            if debug_cage_ntt.get() == True:
-                db_mode = True
-            else:
-                db_mode = False
+        db_coral = debug_coral_ntt.get()
+        db_cage =  debug_cage_ntt.get()
 
         if current_seconds - prev_seconds >= UPTIME_UPDATE_INTERVAL:
             prev_seconds = current_seconds
@@ -646,81 +639,79 @@ def main():
             uptime_ntt.set(seconds)
             time_check = True
 
-            # if is_red_alliance.get() == True:
-            #     print("Alliance is red")
-            # else:
-            #     print("Alliance is Blue")
+            if game_piece == 'coral':
+
+                if db_coral == True:
+
+                    print(f'sec={seconds} corals: ave fps={round(fps_av,0)} fps min={round(fps_av_min,0)} fps max={round(fps_av_max,0)}')
+                        #print(f'CAGE_Y_OFFSET={CAGE_Y_OFFSET}')
                     
-            if db_mode == True:
+                    c_b = float(coral_brightness_ntt.get())
+                    if c_b != coral_brightness:
 
-                print(f'sec={seconds} corals: ave fps={round(fps_av,0)} fps min={round(fps_av_min,0)} fps max={round(fps_av_max,0)}')
-                    #print(f'CAGE_Y_OFFSET={CAGE_Y_OFFSET}')
-                
-                c_b = float(coral_brightness_ntt.get())
-                if c_b != coral_brightness:
+                        picam2.set_controls({'Brightness': float(c_b)})
+                        config_coral.set('VISION', CORAL_BRIGHTNESS_TOPIC_NAME , str(c_b))
+                        coral_brightness = c_b
 
-                    picam2.set_controls({'Brightness': float(c_b)})
-                    config_coral.set('VISION', CORAL_BRIGHTNESS_TOPIC_NAME , str(c_b))
-                    coral_brightness = c_b
+                    c_c = float(coral_contrast_ntt.get())
+                    if c_c != coral_contrast:
 
-                c_c = float(coral_contrast_ntt.get())
-                if c_c != coral_contrast:
+                        picam2.set_controls({'Contrast': float(c_c)})
+                        config_coral.set('VISION', CORAL_CONTRAST_TOPIC_NAME , str(c_c))
+                        coral_contrast = c_c
 
-                    picam2.set_controls({'Contrast': float(c_c)})
-                    config_coral.set('VISION', CORAL_CONTRAST_TOPIC_NAME , str(c_c))
-                    coral_contrast = c_c
+                    c_ae = bool(coral_ae_ntt.get())
+                    if c_ae != coral_ae_mode:
+                    
+                        picam2.set_controls({'AeEnable': bool(c_ae)})
+                        config_coral.set('VISION', CORAL_AE_TOPIC_NAME , str(c_ae))
+                        coral_ae_mode = c_ae
 
-                c_ae = bool(coral_ae_ntt.get())
-                if c_ae != coral_ae_mode:
-                
-                    picam2.set_controls({'AeEnable': bool(c_ae)})
-                    config_coral.set('VISION', CORAL_AE_TOPIC_NAME , str(c_ae))
-                    coral_ae_mode = c_ae
+                        if coral_ae_mode == False:
+                            exp_time = int(round(coral_exposure_ntt.get(),0))
+                            picam2.set_controls({"ExposureTime": \
+                                exp_time, "AnalogueGain": 1.0})
+                            config_coral.set('VISION', CORAL_EXPOSURE_TOPIC_NAME, str(exp_time))
 
-                    if coral_ae_mode == False:
-                        exp_time = int(round(coral_exposure_ntt.get(),0))
-                        picam2.set_controls({"ExposureTime": \
-                            exp_time, "AnalogueGain": 1.0})
-                        config_coral.set('VISION', CORAL_EXPOSURE_TOPIC_NAME, str(exp_time))
+                else:
+                    print(f'{seconds}')
 
-            else:
-                print(f'{seconds}')
+            if game_piece == 'cage':
 
-            if db_mode == True:
-                
-                print(f'sec={seconds} cages: ave fps={round(fps_av,0)} fps min={round(fps_av_min,0)} fps max={round(fps_av_max,0)}')
-                    #print(f'CAGE_Y_OFFSET={CAGE_Y_OFFSET}')
+                if db_cage == True:
+                    
+                    print(f'sec={seconds} cages: ave fps={round(fps_av,0)} fps min={round(fps_av_min,0)} fps max={round(fps_av_max,0)}')
+                        #print(f'CAGE_Y_OFFSET={CAGE_Y_OFFSET}')
 
-                c_b = float(cage_brightness_ntt.get())
-                if c_b != cage_brightness:
+                    c_b = float(cage_brightness_ntt.get())
+                    if c_b != cage_brightness:
 
-                    picam2.set_controls({'Brightness': float(c_b)})
-                    config_cage.set('VISION', CAGE_BRIGHTNESS_TOPIC_NAME , str(c_b))
-                    cage_brightness = c_b
+                        picam2.set_controls({'Brightness': float(c_b)})
+                        config_cage.set('VISION', CAGE_BRIGHTNESS_TOPIC_NAME , str(c_b))
+                        cage_brightness = c_b
 
-                c_c = float(cage_contrast_ntt.get())
-                if c_c != cage_contrast:
+                    c_c = float(cage_contrast_ntt.get())
+                    if c_c != cage_contrast:
 
-                    picam2.set_controls({'Contrast': float(c_c)})
-                    config_cage.set('VISION', CORAL_CONTRAST_TOPIC_NAME , str(c_c))
-                    cage_contrast = c_c
+                        picam2.set_controls({'Contrast': float(c_c)})
+                        config_cage.set('VISION', CORAL_CONTRAST_TOPIC_NAME , str(c_c))
+                        cage_contrast = c_c
 
-                c_ae = bool(cage_ae_ntt.get())
-                if c_ae != cage_ae_mode:
-                
-                    picam2.set_controls({'AeEnable': bool(c_ae)})
-                    config_coral.set('VISION', CAGE_AE_TOPIC_NAME , str(c_ae))
-                    cage_ae_mode = c_ae
+                    c_ae = bool(cage_ae_ntt.get())
+                    if c_ae != cage_ae_mode:
+                    
+                        picam2.set_controls({'AeEnable': bool(c_ae)})
+                        config_coral.set('VISION', CAGE_AE_TOPIC_NAME , str(c_ae))
+                        cage_ae_mode = c_ae
 
-                    if cage_ae_mode == False:
-                        exp_time = int(round(cage_exposure_ntt.get(),0))
-                        picam2.set_controls({"ExposureTime": \
-                            exp_time, "AnalogueGain": 1.0})
-                        config_cage.set('VISION', CAGE_EXPOSURE_TOPIC_NAME, str(exp_time))
+                        if cage_ae_mode == False:
+                            exp_time = int(round(cage_exposure_ntt.get(),0))
+                            picam2.set_controls({"ExposureTime": \
+                                exp_time, "AnalogueGain": 1.0})
+                            config_cage.set('VISION', CAGE_EXPOSURE_TOPIC_NAME, str(exp_time))
 
-            else:
-                print(f'{seconds}')
-            
+                else:
+                    print(f'{seconds}')                
 
         if temp_sec >= TEMP_UPDATE_INTERVAL:
             with open("/sys/class/thermal/thermal_zone0/temp", 'r') as f:
@@ -749,13 +740,11 @@ def main():
         
         #
         # Insert your image processing logic here!
-
           
         #CORAL!!!
         if game_piece == 'coral':
-            #if coral_enable_ntt.get() == True:
            
-            if db_mode == True:
+            if db_coral == True:
                 coral_min_h = int(coral_min_h_ntt.get())
                 coral_min_s = int(coral_min_s_ntt.get())
                 coral_min_v = int(coral_min_v_ntt.get())
@@ -796,10 +785,14 @@ def main():
             min_aspect_ratio = CORAL_MIN_ASPECT_RATIO
             max_aspect_ratio = CORAL_MAX_ASPECT_RATIO
             use_extent = False
+            use_extent_as_perp = False
             min_distance = CORAL_MIN_DISTANCE
             max_distance = CORAL_MAX_DISTANCE
             min_angle = CORAL_MIN_ANGLE
             max_angle = CORAL_MAX_ANGLE
+            use_extent_as_perp = False
+            perp = False
+
             pose_data_bytes_ntt=coral_pose_data_bytes_ntt
             pose_data_string_header_ntt = coral_pose_data_string_header_ntt
             distance_ntt = coral_distance_ntt
@@ -813,7 +806,7 @@ def main():
 
         elif game_piece == 'cage':
 
-            if db_mode == True:
+            if db_cage == True:
                 cage_min_h_red = int(cage_min_h_red_ntt.get())
                 cage_min_s_red = int(cage_min_s_red_ntt.get())
                 cage_min_v_red = int(cage_min_v_red_ntt.get())
@@ -852,6 +845,7 @@ def main():
                         cage_crop_y_ntt.get())
                     cage_config_savefile_ntt.set(False)
 
+
             if is_red_alliance.get() == True:
                 min_h = cage_min_h_red
                 min_s = cage_min_s_red 
@@ -882,6 +876,9 @@ def main():
             max_distance = CAGE_MAX_DISTANCE
             min_angle = CAGE_MIN_ANGLE
             max_angle = CAGE_MAX_ANGLE
+            use_extent_as_perp = True
+            perp = False
+
             pose_data_bytes_ntt=cage_pose_data_bytes_ntt
             pose_data_string_header_ntt = cage_pose_data_string_header_ntt
             distance_ntt = cage_distance_ntt
@@ -915,30 +912,21 @@ def main():
         center_y_max = -24
         area = 1
 
-        for y in contours_sorted:
+        max_contour = contours_sorted[0]
 
-            area = cv2.contourArea(y)
-            # print('check 1')
-            #uncomment the following block to get raw data output for debugging and calibrating distance / angle
-            
-            r_x,r_y,r_w,r_h = cv2.boundingRect(y)
+        area = cv2.contourArea(max_contour)
+        if area > min_area:
+
+            r_x,r_y,r_w,r_h = cv2.boundingRect(max_contour)
             center_x = r_x + int(round(r_w / 2)) + X_OFFSET
             center_y = r_y + int(round(r_h / 2)) + Y_OFFSET
             extent = float(area) / (r_w * r_h)
             #print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
-            
-            #print(f'aspect ratio = {r_w/r_h} area = {area}')
-            if area > min_area: 
-                r_x,r_y,r_w,r_h = cv2.boundingRect(y)
-                center_y = r_y + int(round(r_h / 2)) + Y_OFFSET
-
-                # print('check 2')
-
-                if center_y > center_y_max:
-                    center_y_max = center_y
-                    max_contour = y     
         
-        # at this point, max_contour points to closest shape by vertical y or None if the area of all were too small
+        else:
+            continue
+                        
+        # at this point, max_contour points to closest shape by area or None if the area of all were too small
         # now need to determine if this shape is a coral
         if max_contour is not None:
 
@@ -965,33 +953,38 @@ def main():
                 aspect_ratio = (r_w/r_h)
                 #print(f'aspect ratio = {aspect_ratio}')
                 
-                #print(f'AR={aspect_ratio:4.1f} area={area:4.1f} ex={extent:1.2f} coral_y={center_y}')
+                print(f'AR={aspect_ratio:4.1f} area={area:4.1f} ex={extent:1.2f} y_pixel={center_y}')
 
                 #extent goes way down when we get real close
                 if (aspect_ratio > min_aspect_ratio and aspect_ratio < max_aspect_ratio and use_extent is True and \
                     extent > min_extent and extent < max_extent):
 
-
-                # don't see a full coral this close, so y value for this distance is a bit off so force it to 0
+                # won't see full game piece this close, so y value for this distance is a bit off so force it to 0
                     if center_y >= max_center_y: 
                         distance = 0
                     else:
                         distance = find_distance(center_y) # get distance (inches) using y location
                     
-                    #print('***check 4***')
-                    #Finds bounding rect instead of extreme points 
                     rect = cv2.minAreaRect(max_contour)
                     box = cv2.boxPoints(rect)
-                    box = np.int0(box)   
-                    angle = rect[2]
+                    box = np.int0(box)
+                    angle = 0
+
+                    if use_extent_as_perp is True:
+                    
+                        if extent > CAGE_MIN_EXTENT_PERP and extent < CAGE_MAX_EXTENT_PERP:
+                            perp = True
+                        else:
+                            perp = False
+                    else:
+                        angle = rect[2]
+
                     # rect[2] is float angle in degrees
                     # print(f'distance={distance:4.1f}, y distance={center_y}, area={area:3.3f}, aspect ratio={aspect_ratio:3.3f}, angle = {(90-angle):3.3f}')
                     distance=0
                     
                     if (distance >= min_distance and distance < max_distance) and (angle >= min_angle and angle < max_angle): # sanity check'''
                         
-                        #print('check 4.1')
-
                         image_num += 1
                         image_counter += 1
                         image_time = time.perf_counter() - t1_time
@@ -1010,17 +1003,23 @@ def main():
                         pose_data_bytes_ntt.set(pose_data)
                         NetworkTableInstance.getDefault().flush()
 
-                        if db_mode == True:
-
-                            # print('check 5')
-                            
+                        if db_coral or db_cage:
+                           
                             txt = piece_pose_data_string(image_num, rio_time, image_time, distance, angle)
                             pose_data_string_header_ntt.set(txt)
                             distance_ntt.set(round(distance,2))
-                            angle_ntt.set(round(angle,2))                  
-                            cv2.drawContours(original_image,[box],0,(0,255,0),2)
+                            angle_ntt.set(round(angle,2))
+                            perp_ntt.set(perp)
+                            leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
+                            rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
+                            topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
+                            bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])                  
+                            cv2.circle(original_image, (leftmost), 12, (200,0,0), -1)
+                            cv2.circle(original_image, (rightmost), 12, (200,0,0), -1)
+                            cv2.circle(original_image, (topmost), 12, (200,0,0), -1)
+                            cv2.circle(original_image, (bottommost), 12, (200,0,0), -1)
                             cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
-                            # cv2.drawContours(original_image, [max_contour], 0, (200,0,0), 4)
+                            cv2.drawContours(original_image, [box], 0, (0,200,0), 4)
                             output_stream_image.putFrame(original_image) # send to dashboard
                             output_stream_mask.putFrame(img_mask) # send to dashboard
                             if record_data_ntt.get() == True:
