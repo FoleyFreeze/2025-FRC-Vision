@@ -417,7 +417,7 @@ def main():
     camera_orientation = camera_upside_down()
 
     # start NetworkTables
-    ntconnect = NTConnectType(NTConnectType.SERVER)    #use CLIENT when running with rio
+    ntconnect = NTConnectType(NTConnectType.CLIENT)    #use CLIENT when running with rio
     ntinst = NetworkTableInstance.getDefault()
     if ntconnect == NTConnectType.SERVER:
         ntinst.startServer()
