@@ -28,11 +28,45 @@ def coral_regress_px_per_deg(x):
         t *= x
     return r
 
-def piece_pose_data_string(sequence_num, rio_time, time, dist, angle):
-    string_header = f'num={sequence_num} t_rio={rio_time:1.3f} t_img={time:1.3f} z_in={dist:3.1f} y_deg={angle:3.1f}'
+def cage_regress_distance(y):
+    terms = [
+     1.3834346403503292e+002,
+    -1.2644449696528475e+000,
+     5.0030796154002652e-003,
+    -7.3635774828956818e-006
+    ]
+    
+    t = 1
+    r = 0
+    for c in terms:
+        r += c * t
+        t *= y
+    return r
+
+def cage_regress_px_per_deg(x):
+    terms = [
+    -7.3903937412351439e-001,
+     4.5468032991818802e-001,
+    -9.5471716424870290e-003,
+     6.4455682244858161e-005
+    ]   
+
+    t = 1
+    r = 0
+    for c in terms:
+        r += c * t
+        t *= x
+    return r
+
+def cage_pose_data_string(sequence_num, rio_time, time, dist, angle, perp):
+    string_header = f'num={sequence_num} t_rio={rio_time:1.3f} t_img={time:1.3f} z_in={dist:3.1f} y_deg={angle:3.1f} perp={perp}'
     
     return string_header
 
+def coral_pose_data_string(sequence_num, rio_time, time, dist, angle, rot):
+    string_header = f'num={sequence_num} t_rio={rio_time:1.3f} t_img={time:1.3f} z_in={dist:3.1f} y_deg={angle:3.1f} rot={rot:3.1f}'
+
+    return string_header
 
 def file_write_corals(file,
                 min_h,
@@ -205,10 +239,10 @@ def file_read_cage(parser, configfile_failure_ntt):
         parser.set('VISION', CAGE_MAX_VAL_RED_TOPIC_NAME, str(CAGE_MAX_VAL_RED))
         parser.set('VISION', CAGE_MIN_HUE_BLUE_TOPIC_NAME, str(CAGE_MIN_HUE_BLUE))
         parser.set('VISION', CAGE_MIN_SAT_BLUE_TOPIC_NAME, str(CAGE_MIN_SAT_BLUE))
-        parser.set('VISION', CAGE_MIN_VAL_RED_TOPIC_NAME, str(CAGE_MIN_VAL_RED))
+        parser.set('VISION', CAGE_MIN_VAL_BLUE_TOPIC_NAME, str(CAGE_MIN_VAL_BLUE))
         parser.set('VISION', CAGE_MAX_HUE_BLUE_TOPIC_NAME, str(CAGE_MAX_HUE_BLUE))
         parser.set('VISION', CAGE_MAX_SAT_BLUE_TOPIC_NAME, str(CAGE_MAX_SAT_BLUE))
-        parser.set('VISION', CAGE_MAX_VAL_RED_TOPIC_NAME, str(CAGE_MAX_VAL_RED))
+        parser.set('VISION', CAGE_MAX_VAL_BLUE_TOPIC_NAME, str(CAGE_MAX_VAL_BLUE))
         parser.set('VISION', 'Brightness', str(BRIGHTNESS_DEFAULT))
         parser.set('VISION', 'Contrast', str(CONTRAST_DEFAULT))
         parser.set('VISION', 'Auto Exposure', str(AE_DEFAULT))
@@ -355,11 +389,18 @@ coral:
 number of corals detected: unsigned char (1 byte)
 for each coral: pose x: float (4 bytes), pose y: float (4 bytes), pose z: float (4 bytes), pose x angle: float (4 bytes), pose y angle: float (4 bytes), pose z angle: float (4 bytes)s)
 '''
-def piece_pose_data_bytes(sequence_num, rio_time, image_time, type, dist, angle):
+def cage_pose_data_bytes(sequence_num, rio_time, image_time, type, dist, angle, perp):
     byte_array = bytearray()
     # start the array with sequence number, the RIO's time, image time, and tag type
     byte_array += struct.pack(">LffBB", sequence_num, rio_time, image_time, type, 1)
-    byte_array += struct.pack(">ff", angle, dist) 
+    byte_array += struct.pack(">ff?", angle, dist, perp) 
+    return byte_array
+
+def coral_pose_data_bytes(sequence_num, rio_time, image_time, type, dist, angle, rot):
+    byte_array = bytearray()
+    # start the array with sequence number, the RIO's time, image time, and tag type
+    byte_array += struct.pack(">LffBB", sequence_num, rio_time, image_time, type, 1)
+    byte_array += struct.pack(">fff", angle, dist, rot) 
     return byte_array
 
 def remove_image_files(path):
@@ -792,6 +833,8 @@ def main():
             max_angle = CORAL_MAX_ANGLE
             use_extent_as_perp = False
             perp = False
+            bumper_correction = CORAL_BUMPER_CORRECTION
+            show_extreme_points = False
 
             pose_data_bytes_ntt=coral_pose_data_bytes_ntt
             pose_data_string_header_ntt = coral_pose_data_string_header_ntt
@@ -803,6 +846,8 @@ def main():
             record_data_file_name = 'coral_data.txt'
             find_distance = coral_regress_distance
             find_pixels_per_degree = coral_regress_px_per_deg
+            piece_pose_data_bytes = coral_pose_data_bytes
+            piece_pose_data_bytes_string = coral_pose_data_string
 
         elif game_piece == 'cage':
 
@@ -878,6 +923,8 @@ def main():
             max_angle = CAGE_MAX_ANGLE
             use_extent_as_perp = True
             perp = False
+            bumper_correction = CAGE_BUMPER_CORRECTION
+            show_extreme_points = False
 
             pose_data_bytes_ntt=cage_pose_data_bytes_ntt
             pose_data_string_header_ntt = cage_pose_data_string_header_ntt
@@ -887,8 +934,10 @@ def main():
             output_stream_mask = outputMask
             record_data_ntt = cage_config_savefile_ntt
             record_data_file_name = 'cage_data.txt'
-            find_distance = coral_regress_distance # change to the cage version once we have one
-            find_pixels_per_degree = coral_regress_px_per_deg # change to the cage version once we have one
+            find_distance = cage_regress_distance # change to the cage version once we have one
+            find_pixels_per_degree = cage_regress_px_per_deg # change to the cage version once we have one
+            piece_pose_data_bytes = cage_pose_data_bytes
+            piece_pose_data_bytes_string = cage_pose_data_string
 
         # even though image capture format is RGB888, images are stored as BGR
         # for HSV filtering / masking / detecting, convert input image from BGR to HSV
@@ -911,21 +960,21 @@ def main():
         max_contour = None
         center_y_max = -24
         area = 1
+   
+        if len(contours_sorted) >= 1:
+            max_contour = contours_sorted[0]
 
-        max_contour = contours_sorted[0]
+        if max_contour is not None:
 
-        area = cv2.contourArea(max_contour)
-        if area > min_area:
+            area = cv2.contourArea(max_contour)
+            if area > min_area:
 
-            r_x,r_y,r_w,r_h = cv2.boundingRect(max_contour)
-            center_x = r_x + int(round(r_w / 2)) + X_OFFSET
-            center_y = r_y + int(round(r_h / 2)) + Y_OFFSET
-            extent = float(area) / (r_w * r_h)
-            #print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
-        
-        else:
-            continue
-                        
+                r_x,r_y,r_w,r_h = cv2.boundingRect(max_contour)
+                center_x = r_x + int(round(r_w / 2)) + X_OFFSET
+                center_y = r_y + int(round(r_h / 2)) + Y_OFFSET
+                extent = float(area) / (r_w * r_h)
+                #print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
+                              
         # at this point, max_contour points to closest shape by area or None if the area of all were too small
         # now need to determine if this shape is a coral
         if max_contour is not None:
@@ -953,7 +1002,7 @@ def main():
                 aspect_ratio = (r_w/r_h)
                 #print(f'aspect ratio = {aspect_ratio}')
                 
-                print(f'AR={aspect_ratio:4.1f} area={area:4.1f} ex={extent:1.2f} y_pixel={center_y}')
+                print(f'AR={aspect_ratio:4.1f} area={area:4.1f} ex={extent:1.2f} x_pixel={center_x}, y_pixel={center_y}')
 
                 #extent goes way down when we get real close
                 if (aspect_ratio > min_aspect_ratio and aspect_ratio < max_aspect_ratio and use_extent is True and \
@@ -963,12 +1012,15 @@ def main():
                     if center_y >= max_center_y: 
                         distance = 0
                     else:
-                        distance = find_distance(center_y) # get distance (inches) using y location
+                        distance = (find_distance(center_y) - bumper_correction) # get distance (inches) using y location subtracted by given value to account for bumpers
                     
                     rect = cv2.minAreaRect(max_contour)
                     box = cv2.boxPoints(rect)
                     box = np.int0(box)
                     angle = 0
+                    rot = 0
+
+                    angle = ((center_x - w/2) * (1/find_pixels_per_degree(distance)))
 
                     if use_extent_as_perp is True:
                     
@@ -977,11 +1029,11 @@ def main():
                         else:
                             perp = False
                     else:
-                        angle = rect[2]
+                        rot = rect[2]
 
                     # rect[2] is float angle in degrees
                     # print(f'distance={distance:4.1f}, y distance={center_y}, area={area:3.3f}, aspect ratio={aspect_ratio:3.3f}, angle = {(90-angle):3.3f}')
-                    distance=0
+                    #distance=0
                     
                     if (distance >= min_distance and distance < max_distance) and (angle >= min_angle and angle < max_angle): # sanity check'''
                         
@@ -999,13 +1051,21 @@ def main():
                             image_time_av_total = 0
                             image_counter = 0
 
-                        pose_data = piece_pose_data_bytes(image_num, rio_time, image_time, 3, distance, angle)
+                        if game_piece == 'cage':
+                            pose_data = piece_pose_data_bytes(image_num, rio_time, image_time, 3, distance, angle, perp)
+                        else:
+                            pose_data = piece_pose_data_bytes(image_num, rio_time, image_time, 3, distance, angle, rot)
+
                         pose_data_bytes_ntt.set(pose_data)
                         NetworkTableInstance.getDefault().flush()
 
                         if db_coral or db_cage:
                            
-                            txt = piece_pose_data_string(image_num, rio_time, image_time, distance, angle)
+                            if game_piece == 'cage':
+                                txt = piece_pose_data_bytes_string(image_num, rio_time, image_time, distance, angle, perp)
+                            else:
+                                txt = piece_pose_data_bytes_string(image_num, rio_time, image_time, distance, angle, rot)
+
                             pose_data_string_header_ntt.set(txt)
                             distance_ntt.set(round(distance,2))
                             angle_ntt.set(round(angle,2))
@@ -1013,11 +1073,12 @@ def main():
                             leftmost = tuple(max_contour[max_contour[:,:,0].argmin()][0])
                             rightmost = tuple(max_contour[max_contour[:,:,0].argmax()][0])
                             topmost = tuple(max_contour[max_contour[:,:,1].argmin()][0])
-                            bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])                  
-                            cv2.circle(original_image, (leftmost), 12, (200,0,0), -1)
-                            cv2.circle(original_image, (rightmost), 12, (200,0,0), -1)
-                            cv2.circle(original_image, (topmost), 12, (200,0,0), -1)
-                            cv2.circle(original_image, (bottommost), 12, (200,0,0), -1)
+                            bottommost = tuple(max_contour[max_contour[:,:,1].argmax()][0])
+                            if show_extreme_points is True:           
+                                cv2.circle(original_image, (leftmost), 12, (200,0,0), -1)
+                                cv2.circle(original_image, (rightmost), 12, (200,0,0), -1)
+                                cv2.circle(original_image, (topmost), 12, (200,0,0), -1)
+                                cv2.circle(original_image, (bottommost), 12, (200,0,0), -1)
                             cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
                             cv2.drawContours(original_image, [box], 0, (0,200,0), 4)
                             output_stream_image.putFrame(original_image) # send to dashboard

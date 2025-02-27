@@ -1103,6 +1103,19 @@
               "Slider Settings/Block increment": 1.0,
               "Visuals/Display value": true
             }
+          },
+          "9,8": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Toggle Switch",
+              "_source0": "network_table:///Vision/Coral Enable",
+              "_title": "Vision/Coral Enable",
+              "_glyph": 148,
+              "_showGlyph": false
+            }
           }
         }
       }
@@ -1197,7 +1210,7 @@
           "10,7": {
             "size": [
               3,
-              3
+              2
             ],
             "content": {
               "_type": "Toggle Switch",
@@ -1210,7 +1223,7 @@
           "7,7": {
             "size": [
               3,
-              3
+              2
             ],
             "content": {
               "_type": "Toggle Switch",
@@ -1476,7 +1489,7 @@
               "Visuals/Display value": true
             }
           },
-          "7,10": {
+          "7,9": {
             "size": [
               3,
               2
@@ -1485,6 +1498,34 @@
               "_type": "Toggle Switch",
               "_source0": "network_table:///FMSInfo/isRedAlliance",
               "_title": "RedAlliance",
+              "_glyph": 148,
+              "_showGlyph": false
+            }
+          },
+          "10,9": {
+            "size": [
+              3,
+              2
+            ],
+            "content": {
+              "_type": "Boolean Box",
+              "_source0": "network_table:///Vision/Is Perpenduclar",
+              "_title": "Vision/Is Perpenduclar",
+              "_glyph": 148,
+              "_showGlyph": false,
+              "Colors/Color when true": "#7CFC00FF",
+              "Colors/Color when false": "#8B0000FF"
+            }
+          },
+          "10,11": {
+            "size": [
+              3,
+              1
+            ],
+            "content": {
+              "_type": "Text View",
+              "_source0": "network_table:///Vision/Cage Pose Data Header",
+              "_title": "Vision/Cage Pose Data Header",
               "_glyph": 148,
               "_showGlyph": false
             }
@@ -1507,8 +1548,8 @@
     }
   ],
   "windowGeometry": {
-    "x": -25.0,
-    "y": 0.0,
+    "x": -2568.0,
+    "y": -83.0,
     "width": 2576.0,
     "height": 1056.0
   }
