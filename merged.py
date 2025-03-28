@@ -126,11 +126,11 @@ CORAL_X_OFFSET = 0
 CORAL_Y_OFFSET = 5
 CAGE_RECORD_DATA_TOPIC_NAME = "/Vision/Cage Record"
 CAGE_X_OFFSET = 0
-CAGE_Y_OFFSET = 5 - 16 # Was 5
+CAGE_Y_OFFSET = 0 #5 - 16 # Was 5
 CORAL_MIN_CENTER_Y = 17
 CORAL_MAX_CENTER_Y = 460
 CAGE_MIN_CENTER_Y = 17
-CAGE_MAX_CENTER_Y = 350
+CAGE_MAX_CENTER_Y = 333
 CAGE_CENTER_Y_CLOSE = 260
 CAGE_MIN_ASPECT_RATIO = .2
 CAGE_MAX_ASPECT_RATIO = .7
@@ -143,8 +143,8 @@ CAGE_MAX_EXTENT_PERP = .73
 CAGE_MAX_AR_CLOSE = .8
 CORAL_MIN_ASPECT_RATIO = .3
 CORAL_MAX_ASPECT_RATIO = 3.5
-CAGE_MIN_DISTANCE = 0
-CAGE_MAX_DISTANCE = 84
+CAGE_MIN_DISTANCE = 2
+CAGE_MAX_DISTANCE = 92
 CORAL_MIN_DISTANCE = 0
 CORAL_MAX_DISTANCE = 84
 CAGE_MIN_ANGLE = -55
@@ -193,6 +193,7 @@ ALLIANCE_TYPE_TOPIC_NAME = "/FMSInfo/isRedAlliance"
 PERP_TOPIC_NAME = "/Vision/Is Perpenduclar"
 CAGE_BUMPER_CORRECTION = 0
 CORAL_BUMPER_CORRECTION = 0
+CAGE_CENTER_OFFSET = 10
 
 class NTConnectType(Enum):
     SERVER = 1
@@ -394,11 +395,12 @@ def coral_regress_px_per_deg(x):
     return r
 
 def cage_regress_distance(y):
+    
     terms = [
-     1.3834346403503292e+002,
-    -1.2644449696528475e+000,
-     5.0030796154002652e-003,
-    -7.3635774828956818e-006
+        1.5841590981588232e+002,
+        -1.4720781685440105e+000,
+        5.5831522903344180e-003,
+        -7.7508494000204533e-006
     ]
     
     t = 1
@@ -410,10 +412,10 @@ def cage_regress_distance(y):
 
 def cage_regress_px_per_deg(x):
     terms = [
-    -7.3903937412351439e-001,
-     4.5468032991818802e-001,
-    -9.5471716424870290e-003,
-     6.4455682244858161e-005
+     2.6951913744312228e+000,
+     1.6418065324623948e-001,
+    -2.1592428271868368e-003,
+     1.0464701880711019e-005
     ]   
 
     t = 1
@@ -1196,10 +1198,10 @@ def main():
             max_distance = CORAL_MAX_DISTANCE
             min_angle = CORAL_MIN_ANGLE
             max_angle = CORAL_MAX_ANGLE
-            use_extent_as_perp = False
             perp = False
             bumper_correction = CORAL_BUMPER_CORRECTION
             show_extreme_points = False
+            adjust_center = False
 
             pose_data_bytes_ntt=coral_pose_data_bytes_ntt
             pose_data_string_header_ntt = coral_pose_data_string_header_ntt
@@ -1286,10 +1288,11 @@ def main():
             max_distance = CAGE_MAX_DISTANCE
             min_angle = CAGE_MIN_ANGLE
             max_angle = CAGE_MAX_ANGLE
-            use_extent_as_perp = True
+            use_extent_as_perp = False
             perp = False
             bumper_correction = CAGE_BUMPER_CORRECTION
             show_extreme_points = False
+            adjust_center = True
 
             pose_data_bytes_ntt=cage_pose_data_bytes_ntt
             pose_data_string_header_ntt = cage_pose_data_string_header_ntt
@@ -1335,8 +1338,15 @@ def main():
             if area > min_area:
 
                 r_x,r_y,r_w,r_h = cv2.boundingRect(max_contour)
-                center_x = r_x + int(round(r_w / 2)) + X_OFFSET
-                center_y = r_y + int(round(r_h / 2)) + Y_OFFSET
+                center_x = r_x + int(round(r_w / 2))
+                center_y = r_y + int(round(r_h / 2))
+                # if adjust_center is True:
+                #     if img_mask[center_y, center_x] > 0:
+                #         while img_mask[center_y, center_x] > 0:
+                #             center_x = center_x  + CAGE_CENTER_OFFSET
+                #         center_x = center_x + CAGE_CENTER_OFFSET
+                center_x += X_OFFSET
+                center_y += Y_OFFSET
                 extent = float(area) / (r_w * r_h)
                 #print(f'ar={area:4.1f} ex={extent:1.2f} coral_x={center_x} coral_y={center_y}')
                               
@@ -1367,11 +1377,13 @@ def main():
                 aspect_ratio = (r_w/r_h)
                 #print(f'aspect ratio = {aspect_ratio}')
                 
-                print(f'AR={aspect_ratio:4.1f} area={area:4.1f} ex={extent:1.2f} x_pixel={center_x}, y_pixel={center_y}')
+                #print(f'AR={aspect_ratio:4.1f} area={area:4.1f} ex={extent:1.2f} x_pixel={center_x}, y_pixel={center_y}')
 
                 #extent goes way down when we get real close
                 if (aspect_ratio > min_aspect_ratio and aspect_ratio < max_aspect_ratio and use_extent is True and \
                     extent > min_extent and extent < max_extent):
+
+                    print(f'AR={aspect_ratio:4.1f} area={area:4.1f} ex={extent:1.2f} x_pixel={center_x}, y_pixel={center_y}')
 
                 # won't see full game piece this close, so y value for this distance is a bit off so force it to 0
                     if center_y >= max_center_y: 
@@ -1444,7 +1456,7 @@ def main():
                                 cv2.circle(original_image, (rightmost), 12, (200,0,0), -1)
                                 cv2.circle(original_image, (topmost), 12, (200,0,0), -1)
                                 cv2.circle(original_image, (bottommost), 12, (200,0,0), -1)
-                            cv2.circle(original_image, (center_x, center_y), 12, (200,0,0), -1)
+                            cv2.circle(original_image, (center_x, center_y), 12, (200,200,0), -1)
                             cv2.drawContours(original_image, [box], 0, (0,200,0), 4)
                             output_stream_image.putFrame(original_image) # send to dashboard
                             output_stream_mask.putFrame(img_mask) # send to dashboard
