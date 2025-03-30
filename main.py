@@ -410,6 +410,164 @@ def remove_image_files(path):
         if os.path.isfile(file_path):
             os.remove(file_path)  
 
+
+streamconfigFile = "/boot/frc-stream.json"
+
+class streamCameraConfig: pass
+
+team = None
+streamserver = False
+streamcameraConfigs = []
+streamswitchedCameraConfigs = []
+streamcameras = []
+
+def streamparseError(str):
+    """Report parse error."""
+    print("config error in '" + configFile + "': " + str, file=sys.stderr)
+
+def streamreadCameraConfig(config):
+    """Read single camera configuration."""
+    cam = streamCameraConfig()
+
+    # name
+    try:
+        cam.name = config["name"]
+    except KeyError:
+        parseError("could not read camera name")
+        return False
+
+    # path
+    try:
+        cam.path = config["path"]
+    except KeyError:
+        parseError("camera '{}': could not read path".format(cam.name))
+        return False
+
+    # stream properties
+    cam.streamConfig = config.get("stream")
+
+    cam.config = config
+
+    streamcameraConfigs.append(cam)
+    return True
+
+def streamreadSwitchedCameraConfig(config):
+    """Read single switched camera configuration."""
+    cam = streamCameraConfig()
+
+    # name
+    try:
+        cam.name = config["name"]
+    except KeyError:
+        parseError("could not read switched camera name")
+        return False
+
+    # path
+    try:
+        cam.key = config["key"]
+    except KeyError:
+        parseError("switched camera '{}': could not read key".format(cam.name))
+        return False
+
+    streamswitchedCameraConfigs.append(cam)
+    return True
+
+def streamreadConfig():
+    """Read configuration file."""
+    global team
+    global streamserver
+
+    # parse file
+    try:
+        with open(streamconfigFile, "rt", encoding="utf-8") as f:
+            j = json.load(f)
+    except OSError as err:
+        print("could not open '{}': {}".format(streamconfigFile, err), file=sys.stderr)
+        return False
+
+    # top level must be an object
+    if not isinstance(j, dict):
+        parseError("must be JSON object")
+        return False
+
+    # team number
+    try:
+        team = j["team"]
+    except KeyError:
+        parseError("could not read team number")
+        return False
+
+    # ntmode (optional)
+    if "ntmode" in j:
+        str = j["ntmode"]
+        if str.lower() == "client":
+            streamserver = False
+        elif str.lower() == "server":
+            streamserver = True
+        else:
+            parseError("could not understand ntmode value '{}'".format(str))
+
+    # cameras
+    try:
+        streamcameras = j["cameras"]
+    except KeyError:
+        parseError("could not read cameras")
+        return False
+    for camera in streamcameras:
+        if not streamreadCameraConfig(camera):
+            return False
+
+    # switched cameras
+    if "switched cameras" in j:
+        for camera in j["switched cameras"]:
+            if not streamreadSwitchedCameraConfig(camera):
+                return False
+
+    return True
+
+def streamstartCamera(config):
+    """Start running the camera."""
+    print("Starting camera '{}' on {}".format(config.name, config.path))
+    camera = UsbCamera(config.name, config.path)
+    streamserver = CameraServer.startAutomaticCapture(camera=camera)
+
+    camera.setConfigJson(json.dumps(config.config))
+    camera.setConnectionStrategy(VideoSource.ConnectionStrategy.kConnectionKeepOpen)
+
+    if config.streamConfig is not None:
+        streamserver.setConfigJson(json.dumps(config.streamConfig))
+
+    return camera
+
+def streamstartSwitchedCamera(config):
+    """Start running the switched camera."""
+    print("Starting switched camera '{}' on {}".format(config.name, config.key))
+    server = CameraServer.addSwitchedCamera(config.name)
+
+    def listener(event):
+        data = event.data
+        if data is not None:
+            value = data.value.value()
+            if isinstance(value, int):
+                if value >= 0 and value < len(cameras):
+                    server.setSource(cameras[value])
+            elif isinstance(value, float):
+                i = int(value)
+                if i >= 0 and i < len(cameras):
+                    server.setSource(cameras[i])
+            elif isinstance(value, str):
+                for i in range(len(cameraConfigs)):
+                    if value == cameraConfigs[i].name:
+                        server.setSource(cameras[i])
+                        break
+
+    NetworkTableInstance.getDefault().addListener(
+        NetworkTableInstance.getDefault().getEntry(config.key),
+        EventFlags.kImmediate | EventFlags.kValueAll,
+        listener)
+
+    return server
+
 def main():
 
     print("Hello")
@@ -418,7 +576,7 @@ def main():
     camera_orientation = camera_upside_down()
 
     # start NetworkTables
-    ntconnect = NTConnectType(NTConnectType.CLIENT)    #use CLIENT when running with rio
+    ntconnect = NTConnectType(NTConnectType.SERVER)    #use CLIENT when running with rio
     ntinst = NetworkTableInstance.getDefault()
     if ntconnect == NTConnectType.SERVER:
         ntinst.startServer()
@@ -585,6 +743,20 @@ def main():
     picam2 = Picamera2()
     server = FrameServer(picam2)
 
+    if USE_CAGE_CAM_STREAM is True:
+        # load stream camera settings and start steaming
+        streamreadConfig()
+
+        # start stream camera
+        # work around wpilibsuite/allwpilib#5055
+        CameraServer.setSize(CameraServer.kSize160x120)
+        for config in streamcameraConfigs:
+            streamcameras.append(streamstartCamera(config))
+
+        # start switched camera (optional)
+        #for config in streamswitchedCameraConfigs:
+        #    streamstartSwitchedCamera(config)
+            
     print(f'{len(picam2.sensor_modes)} camera image sensor modes')
     print(picam2.sensor_modes[0])
     #picam2_config = picam2.create_preview_configuration(main={"size" : (w,h)})
@@ -833,9 +1005,8 @@ def main():
             min_angle = CORAL_MIN_ANGLE
             max_angle = CORAL_MAX_ANGLE
             perp = False
-            bumper_correction = CORAL_BUMPER_CORRECTION
             show_extreme_points = False
-            adjust_center = False
+            adjust_distance_and_angle = False
 
             pose_data_bytes_ntt=coral_pose_data_bytes_ntt
             pose_data_string_header_ntt = coral_pose_data_string_header_ntt
@@ -924,9 +1095,10 @@ def main():
             max_angle = CAGE_MAX_ANGLE
             use_extent_as_perp = False
             perp = False
-            bumper_correction = CAGE_BUMPER_CORRECTION
             show_extreme_points = False
-            adjust_center = True
+            adjust_distance_and_angle = True
+            distance_adjustment = CAGE_DISTANCE_ADJUSTMENT
+            angle_adjustment = CAGE_ANGLE_ADJUSTMENT
 
             pose_data_bytes_ntt=cage_pose_data_bytes_ntt
             pose_data_string_header_ntt = cage_pose_data_string_header_ntt
@@ -1023,7 +1195,7 @@ def main():
                     if center_y >= max_center_y: 
                         distance = 0
                     else:
-                        distance = (find_distance(center_y) - bumper_correction) # get distance (inches) using y location subtracted by given value to account for bumpers
+                        distance = find_distance(center_y) # get distance (inches) using y location subtracted by given value to account for bumpers
                     
                     rect = cv2.minAreaRect(max_contour)
                     box = cv2.boxPoints(rect)
@@ -1048,6 +1220,17 @@ def main():
                     
                     if (distance >= min_distance and distance < max_distance) and (angle >= min_angle and angle < max_angle): # sanity check'''
                         
+                        if adjust_distance_and_angle is True:
+
+                            if img_mask[center_y,center_x] > 0:
+                                
+                                print("corrected")
+                                distance += distance_adjustment
+                                if angle > 0:
+                                    angle += angle_adjustment
+                                else:
+                                    angle += (-1) * angle_adjustment
+
                         image_num += 1
                         image_counter += 1
                         image_time = time.perf_counter() - t1_time
